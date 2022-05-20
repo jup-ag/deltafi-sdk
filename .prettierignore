@@ -1,0 +1,9 @@
+*.json
+*.yaml
+*.yml  
+*.lock
+
+src/anchor/
+node_modules/
+.vscode/
+.github/
