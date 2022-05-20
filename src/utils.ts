@@ -2,8 +2,6 @@ import { clusterApiUrl, Commitment, Connection, PublicKey, Transaction } from "@
 import BigNumber from "bignumber.js";
 import fullDeployConfigV2 from "./anchor/fullDeployConfigV2.json";
 
-import { ASSOCIATED_TOKEN_PROGRAM_ID, Token, TOKEN_PROGRAM_ID } from "@solana/spl-token";
-
 function getDeploymentConfig(deployment: string) {
   const deploymentConfig = fullDeployConfigV2[deployment];
   if (!deploymentConfig) {
