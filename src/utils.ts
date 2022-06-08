@@ -1,6 +1,16 @@
-import { clusterApiUrl, Commitment, Connection, PublicKey, Transaction } from "@solana/web3.js";
+import {
+  clusterApiUrl,
+  Commitment,
+  Connection,
+  PublicKey,
+  Transaction,
+  Keypair,
+  Signer,
+} from "@solana/web3.js";
 import BigNumber from "bignumber.js";
 import fullDeployConfigV2 from "./anchor/fullDeployConfigV2.json";
+import * as fs from "fs";
+import { Token, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
 function getDeploymentConfig(deployment: string) {
   const deploymentConfig = fullDeployConfigV2[deployment];
@@ -85,4 +95,19 @@ export function parsePoolInfoFromMintPair(
   }
 
   return new PublicKey(poolAddress);
+}
+
+export const readKeypair = (path: string) => {
+  const secret = JSON.parse(fs.readFileSync(path).toString());
+  return Keypair.fromSecretKey(Uint8Array.from(secret));
+};
+
+export async function getOrCreateAssociatedAccountInfo(
+  connection: Connection,
+  signer: Signer,
+  mint: PublicKey,
+  owner: PublicKey,
+) {
+  const lpToken = new Token(connection, mint, TOKEN_PROGRAM_ID, signer);
+  return lpToken.getOrCreateAssociatedAccountInfo(owner);
 }

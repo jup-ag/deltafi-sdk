@@ -11,6 +11,11 @@ export interface PoolState {
   quoteSupply: anchor.BN;
   totalTradedBase: anchor.BN;
   totalTradedQuote: anchor.BN;
+  accumulatedTradeReward: anchor.BN;
+  lastRewardWindowStartTimestamp: anchor.BN;
+  marketPriceLastUpdateSlot: anchor.BN;
+  lowPrice: anchor.BN;
+  highPrice: anchor.BN;
   reservedU64: Array<any>;
 }
 
@@ -29,8 +34,11 @@ export interface FarmConfig {
   quoteAprNumerator: anchor.BN;
   quoteAprDenominator: anchor.BN;
   minClaimPeriod: number;
-  mintBaseDecimals: number;
-  mintQuoteDecimals: number;
+  isPaused: boolean;
+  maxStakedBaseShare: anchor.BN;
+  maxStakedQuoteShare: anchor.BN;
+  endTimestamp: anchor.BN;
+  reservedU64: Array<any>;
 }
 
 export interface SwapConfig {
@@ -38,68 +46,63 @@ export interface SwapConfig {
   enableConfidenceInterval: boolean;
   maxSwapPercentage: number;
   minReserveLimitPercentage: number;
-  slope: anchor.BN;
-  adminTradeFeeNumerator: anchor.BN;
-  adminTradeFeeDenominator: anchor.BN;
-  adminWithdrawFeeNumerator: anchor.BN;
-  adminWithdrawFeeDenominator: anchor.BN;
-  tradeFeeNumerator: anchor.BN;
-  tradeFeeDenominator: anchor.BN;
-  withdrawFeeNumerator: anchor.BN;
-  withdrawFeeDenominator: anchor.BN;
-  tradeRewardNumerator: anchor.BN;
-  tradeRewardDenominator: anchor.BN;
+  serumMarketTokenRatioLimitPercentage: number;
+  adminTradeFeeNumerator: number;
+  adminTradeFeeDenominator: number;
+  adminWithdrawFeeNumerator: number;
+  adminWithdrawFeeDenominator: number;
+  tradeFeeNumerator: number;
+  tradeFeeDenominator: number;
+  withdrawFeeNumerator: number;
+  withdrawFeeDenominator: number;
+  tradeRewardNumerator: number;
+  tradeRewardDenominator: number;
+  referralRewardNumerator: number;
+  referralRewardDenominator: number;
+  maxStablePriceDiffNumerator: number;
+  maxStablePriceDiffDenominator: number;
   tradeRewardCap: anchor.BN;
-  referralRewardNumerator: anchor.BN;
-  referralRewardDenominator: anchor.BN;
-  maxStablePriceDiffNumerator: anchor.BN;
-  maxStablePriceDiffDenominator: anchor.BN;
-  baseAprNumerator: anchor.BN;
-  baseAprDenominator: anchor.BN;
-  quoteAprNumerator: anchor.BN;
-  quoteAprDenominator: anchor.BN;
-  minClaimPeriod: number;
+  tradeRewardMaxReserve: anchor.BN;
+  slope: anchor.BN;
   reservedU64: Array<any>;
 }
 
 export type SwapDirection =
-  | { sellBase?: any; sellQuote?: never }
-  | { sellBase?: never; sellQuote?: any };
+| { sellBase? : any, sellQuote?: never }
+| { sellBase?: never, sellQuote? : any }
 
-export type AccountType =
-  | { unknown?: any; mapping?: never; product?: never; price?: never }
-  | { unknown?: never; mapping?: any; product?: never; price?: never }
-  | { unknown?: never; mapping?: never; product?: any; price?: never }
-  | { unknown?: never; mapping?: never; product?: never; price?: any };
-
-export type PriceStatus =
-  | { unknown?: any; trading?: never; halted?: never; auction?: never }
-  | { unknown?: never; trading?: any; halted?: never; auction?: never }
-  | { unknown?: never; trading?: never; halted?: any; auction?: never }
-  | { unknown?: never; trading?: never; halted?: never; auction?: any };
-
-export type CorpAction = { noCorpAct?: any };
-
-export type PriceType = { unknown?: any; price?: never } | { unknown?: never; price?: any };
 
 export type SwapType =
-  | { normalSwap?: any; stableSwap?: never }
-  | { normalSwap?: never; stableSwap?: any };
+| { normalSwap? : any, stableSwap?: never, serumSwap?: never }
+| { normalSwap?: never, stableSwap? : any, serumSwap?: never }
+| { normalSwap?: never, stableSwap?: never, serumSwap? : any }
+
 
 export interface DeltafiUser {
   bump: number;
   configKey: PublicKey;
   owner: PublicKey;
   referrer: PublicKey;
-  owedSwapRewards: anchor.BN;
-  claimedSwapRewards: anchor.BN;
+  owedTradeRewards: anchor.BN;
+  claimedTradeRewards: anchor.BN;
   owedReferralRewards: anchor.BN;
   claimedReferralRewards: anchor.BN;
   reserved: Array<any>;
 }
 
+export interface FarmUser {
+  bump: number;
+  configKey: PublicKey;
+  farmKey: PublicKey;
+  owner: PublicKey;
+  basePosition: FarmPosition;
+  quotePosition: FarmPosition;
+  reserved: Array<any>;
+}
+
 export interface FarmInfo {
   bump: number;
+  seed: PublicKey;
   configKey: PublicKey;
   swapKey: PublicKey;
   stakedBaseShare: anchor.BN;
@@ -116,6 +119,7 @@ export interface MarketConfig {
   deltafiMint: PublicKey;
   deltafiToken: PublicKey;
   pythProgramId: PublicKey;
+  serumProgramId: PublicKey;
   reservedU64: Array<any>;
 }
 
@@ -135,6 +139,9 @@ export interface SwapInfo {
   mintQuoteDecimals: number;
   pythPriceBase: PublicKey;
   pythPriceQuote: PublicKey;
+  serumMarket: PublicKey;
+  serumBids: PublicKey;
+  serumAsks: PublicKey;
   poolState: PoolState;
   swapConfig: SwapConfig;
   reservedU64: Array<any>;
@@ -147,7 +154,8 @@ export interface LiquidityProvider {
   owner: PublicKey;
   baseShare: anchor.BN;
   quoteShare: anchor.BN;
-  basePosition: FarmPosition;
-  quotePosition: FarmPosition;
-  reserved: Array<any>;
+  stakedBaseShare: anchor.BN;
+  stakedQuoteShare: anchor.BN;
+  deprecatedU64: Array<any>;
+  reservedU64: Array<any>;
 }

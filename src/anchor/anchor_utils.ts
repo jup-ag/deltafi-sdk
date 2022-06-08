@@ -3,7 +3,9 @@ import deltafiDexV2Idl from "./idl/deltafi_dex_v2.json";
 import { Keypair, PublicKey } from "@solana/web3.js";
 import { Program, AnchorProvider, web3 } from "@project-serum/anchor";
 import * as token from "@solana/spl-token";
-import { MarketConfig, SwapConfig, SwapType } from "./type_definitions";
+import { SwapConfig, SwapType } from "./type_definitions";
+
+const serumProgramId = new web3.PublicKey("9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin");
 
 export function getClusterApiUrl(network: string) {
   if (network === "localhost") {
@@ -39,6 +41,7 @@ export async function createMarketConfig(program, pythProgramId, deltafiMint, ad
       deltafiMint: deltafiMint,
       deltafiToken: deltafiTokenKeyPair.publicKey,
       pythProgram: pythProgramId,
+      serumProgram: serumProgramId,
       admin: adminKeypair.publicKey,
       payer: program.provider.wallet.publicKey,
       systemProgram: web3.SystemProgram.programId,
@@ -53,7 +56,7 @@ export async function createMarketConfig(program, pythProgramId, deltafiMint, ad
 
 export async function createSwap(
   program,
-  marketConfig: MarketConfig,
+  marketConfig: PublicKey,
   mintBase: PublicKey,
   mintQuote: PublicKey,
   adminFeeTokenBase: PublicKey,
@@ -64,7 +67,7 @@ export async function createSwap(
 ) {
   const seedKeypair = web3.Keypair.generate();
   const [swapInfo, swapBump] = await web3.PublicKey.findProgramAddress(
-    [seedKeypair.publicKey.toBuffer()],
+    [Buffer.from("SwapInfo", "utf-8"), marketConfig.toBuffer(), seedKeypair.publicKey.toBuffer()],
     program.programId,
   );
 
@@ -106,6 +109,9 @@ export async function initSwap(
   swapType,
   pythPriceBase,
   pythPriceQuote,
+  serumMarket,
+  serumBids,
+  serumAsks,
   adminKeypair,
 ) {
   const swapInfoData = await program.account.swapInfo.fetch(swapInfo);
@@ -134,7 +140,7 @@ export async function initSwap(
       },
       signers: [adminKeypair],
     });
-  } else {
+  } else if (swapType.stableSwap != null) {
     await program.rpc.initStableSwap(amountA, amountB, {
       accounts: {
         pythPriceBase,
@@ -143,15 +149,25 @@ export async function initSwap(
       },
       signers: [adminKeypair],
     });
+  } else {
+    await program.rpc.initSerumSwap(amountA, amountB, {
+      accounts: {
+        serumMarket,
+        serumBids,
+        serumAsks,
+        ...initSwapAccounts,
+      },
+      signers: [adminKeypair],
+    });
   }
 }
 
-export async function createFarm(program, marketConfig, swapInfo, farmConfig, adminKeypair) {
+export async function createFarm(program, marketConfig, swapInfo, seed, farmConfig, adminKeypair) {
   const [farmInfo, farmBump] = await web3.PublicKey.findProgramAddress(
-    [Buffer.from("FarmInfo", "utf-8"), swapInfo.toBuffer()],
+    [Buffer.from("FarmInfo", "utf-8"), swapInfo.toBuffer(), seed.toBuffer()],
     program.programId,
   );
-  await program.rpc.createFarm(farmBump, farmConfig, {
+  await program.rpc.createFarm(farmBump, seed, farmConfig, {
     accounts: {
       marketConfig,
       farmInfo: farmInfo,
@@ -211,6 +227,31 @@ export async function getOrCreateLiquidityProvider(program, marketConfig, swapIn
     signers: [ownerKeypair],
   });
   return lpPublicKey;
+}
+
+export async function getOrCreateFarmUser(program, marketConfig, farmInfo, ownerKeypair) {
+  const [farmUserPubKey, farmUserBump] = await PublicKey.findProgramAddress(
+    [Buffer.from("FarmUser"), farmInfo.toBuffer(), ownerKeypair.publicKey.toBuffer()],
+    program.programId,
+  );
+
+  const farmUser = await program.account.farmUser.fetchNullable(farmUserPubKey);
+  if (farmUser) {
+    return farmUserPubKey;
+  }
+
+  await program.rpc.createFarmUser(farmUserBump, {
+    accounts: {
+      marketConfig,
+      farmInfo,
+      farmUser: farmUserPubKey,
+      owner: ownerKeypair.publicKey,
+      systemProgram: web3.SystemProgram.programId,
+      rent: web3.SYSVAR_RENT_PUBKEY,
+    },
+    signers: [ownerKeypair],
+  });
+  return farmUserPubKey;
 }
 
 export async function createDeltafiUser(program, marketConfig, userKeypair, referrer = null) {
