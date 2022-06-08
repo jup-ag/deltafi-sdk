@@ -9,11 +9,11 @@ yarn install
 
 Then run the example with example keypair on testnet
 ```
-yarn run-example
+yarn ts-node src/example/example.ts run -k ./keypairs/testnet-keypair.json -n testnet
 ```
 
-You can also use your own keypair and try it on our other deployments
+You can also use your own keypair on mainnet-beta
 ```
-yarn run-example --keypair <your keypair> --deployment <deployment mode>
+yarn ts-node src/example/example.ts run -k <your_keypair> -n mainnet-beta
 ```
 

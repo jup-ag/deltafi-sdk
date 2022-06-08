@@ -3,8 +3,7 @@
   "version": "0.0.1",
   "description": "",
   "scripts": {
-    "format": "prettier --write ./src",
-    "run-example": "ts-node src/example.ts"
+    "format": "prettier --write ./src"
   },
   "repository": {
     "type": "git",

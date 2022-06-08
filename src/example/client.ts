@@ -8,16 +8,9 @@ import {
   SYSVAR_RENT_PUBKEY,
   Transaction,
 } from "@solana/web3.js";
-import { getDeltafiDexV2, makeProvider } from "./anchor/anchor_utils";
-import { DeltafiUser, SwapInfo } from "./anchor/type_definitions";
-import {
-  exponentiate,
-  getMarketConfig,
-  getProgramId,
-  getTokenInfo,
-  mergeTransactions,
-  parsePoolInfoFromMintPair,
-} from "./utils";
+import { getDeltafiDexV2, makeProvider } from "../anchor/anchor_utils";
+import { DeltafiUser, SwapInfo } from "../anchor/type_definitions";
+import { exponentiate, mergeTransactions } from "./utils";
 import { toBufferLE } from "bigint-buffer";
 import { BN } from "@project-serum/anchor";
 
@@ -28,41 +21,38 @@ import { BN } from "@project-serum/anchor";
  * this API only handles the swaps between 2 spl-tokens, it doesn't handle the native SOL swap
  * @param {PublicKey} walletPubkey the public key of the user's wallet
  * @param {Connection} connection the web3 connection for rpc calls
- * @param {PublicKey} inputTokenMintPubkey mint address of the input(selling) token, this must match inputTokenAccountPubkey
- * @param {PublicKey} outputTokenMintPubkey mint address of the output(buying) token, this must match outputTokenAccountPubkey
  * @param {PublicKey} inputTokenAccountPubkey token account of the input(selling) token, the owner must be walletPubkey
  * @param {PublicKey} outputTokenAccountPubkey token account of the output(buying) token, the owner must be walletPubkey
  * @param {string} inputAmount amount of the input token to be sold
  * @param {string} minOutputAmount minimum amout of the output token to get, common practice to prevent high slippage. It is 0 by defaul
- * @param {string} deployment deltafi's deployment config. In production this must be mainnet-prod, which is also the default. In the example we use testnet for demo
  * @returns { transaction, userTransferAuthority } generated transaction and a temporary authority keypair. userTransferAuthority must be used for signing the transaction
  */
 export async function createSwapTransaction(
   walletPubkey: PublicKey,
   connection: Connection,
-  inputTokenMintPubkey: PublicKey,
-  outputTokenMintPubkey: PublicKey,
   inputTokenAccountPubkey: PublicKey,
   outputTokenAccountPubkey: PublicKey,
   inputAmount: string,
   minOutputAmount: string = "0",
-  deployment: string = "mainnet-prod",
+  deployConfig,
+  poolConfig,
+  inputTokenConfig,
+  outputTokenConfig,
 ): Promise<any> {
-  const inputTokenDecimals = getTokenInfo(deployment, inputTokenMintPubkey.toBase58()).decimals;
+  const inputTokenDecimals = inputTokenConfig.decimals;
   const inputAmountBigInt: bigint = BigInt(
     exponentiate(inputAmount, inputTokenDecimals).toFixed(0),
   );
   const minOutputAmountBigInt: bigint = BigInt(
     exponentiate(minOutputAmount, inputTokenDecimals).toFixed(0),
   );
-  const poolPubkey: PublicKey = parsePoolInfoFromMintPair(
-    deployment,
-    inputTokenMintPubkey.toBase58(),
-    outputTokenMintPubkey.toBase58(),
+  const program = getDeltafiDexV2(
+    new PublicKey(deployConfig.programId),
+    makeProvider(connection, {}),
   );
-  const program = getDeltafiDexV2(getProgramId(deployment), makeProvider(connection, {}));
+  const poolPubkey = new PublicKey(poolConfig.swapInfo);
   const swapInfo: SwapInfo = await program.account.swapInfo.fetch(poolPubkey);
-  const marketConfig = getMarketConfig(deployment);
+  const marketConfig = new PublicKey(deployConfig.marketConfig);
 
   const userTransferAuthority = Keypair.generate();
   const transactionApprove: Transaction = new Transaction();
@@ -101,8 +91,8 @@ export async function createSwapTransaction(
 
   const { swapSourceToken, swapDestinationToken, adminDestinationToken } = (() => {
     if (
-      swapInfo.mintBase.toBase58() === inputTokenMintPubkey.toBase58() &&
-      swapInfo.mintQuote.toBase58() === outputTokenMintPubkey.toBase58()
+      swapInfo.mintBase.toBase58() === inputTokenConfig.mint &&
+      swapInfo.mintQuote.toBase58() === outputTokenConfig.mint
     ) {
       return {
         swapSourceToken: swapInfo.tokenBase,
@@ -110,8 +100,8 @@ export async function createSwapTransaction(
         adminDestinationToken: swapInfo.adminFeeTokenQuote,
       };
     } else if (
-      swapInfo.mintBase.toBase58() === outputTokenMintPubkey.toBase58() &&
-      swapInfo.mintQuote.toBase58() === inputTokenMintPubkey.toBase58()
+      swapInfo.mintBase.toBase58() === outputTokenConfig.mint &&
+      swapInfo.mintQuote.toBase58() === inputTokenConfig.mint
     ) {
       return {
         swapSourceToken: swapInfo.tokenQuote,
