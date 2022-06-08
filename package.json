@@ -27,6 +27,7 @@
     "bigint-buffer": "^1.1.5",
     "bignumber.js": "^9.0.1",
     "bn.js": "^5.2.0",
+    "https": "^1.0.0",
     "ts-node": "^10.7.0"
   },
   "devDependencies": {
