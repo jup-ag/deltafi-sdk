@@ -2476,11 +2476,28 @@ export type DeltafiDexV2 = {
             "type": "u128"
           },
           {
+            "name": "disableStablePriceDiffCheck",
+            "type": "bool"
+          },
+          {
+            "name": "disableQuoteTokenPriceCheck",
+            "type": "bool"
+          },
+          {
+            "name": "reservedU8",
+            "type": {
+              "array": [
+                "u8",
+                6
+              ]
+            }
+          },
+          {
             "name": "reservedU64",
             "type": {
               "array": [
                 "u64",
-                16
+                15
               ]
             }
           }
@@ -2869,6 +2886,16 @@ export type DeltafiDexV2 = {
       "code": 6069,
       "name": "DepeggedQuotePrice",
       "msg": "DepeggedQuotePrice"
+    },
+    {
+      "code": 6070,
+      "name": "InvalidWithdrawalAmount",
+      "msg": "Invalid withdrawal amount"
+    },
+    {
+      "code": 6071,
+      "name": "InvalidStakingAmount",
+      "msg": "Invalid staking amount"
     }
   ]
 };
@@ -5351,11 +5378,28 @@ export const IDL: DeltafiDexV2 = {
             "type": "u128"
           },
           {
+            "name": "disableStablePriceDiffCheck",
+            "type": "bool"
+          },
+          {
+            "name": "disableQuoteTokenPriceCheck",
+            "type": "bool"
+          },
+          {
+            "name": "reservedU8",
+            "type": {
+              "array": [
+                "u8",
+                6
+              ]
+            }
+          },
+          {
             "name": "reservedU64",
             "type": {
               "array": [
                 "u64",
-                16
+                15
               ]
             }
           }
@@ -5744,6 +5788,16 @@ export const IDL: DeltafiDexV2 = {
       "code": 6069,
       "name": "DepeggedQuotePrice",
       "msg": "DepeggedQuotePrice"
+    },
+    {
+      "code": 6070,
+      "name": "InvalidWithdrawalAmount",
+      "msg": "Invalid withdrawal amount"
+    },
+    {
+      "code": 6071,
+      "name": "InvalidStakingAmount",
+      "msg": "Invalid staking amount"
     }
   ]
 };

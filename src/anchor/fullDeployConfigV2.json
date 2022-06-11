@@ -33,6 +33,24 @@
         "mintQuote": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
         "swapInfo": "4vx4UNSGEzfL9NWDuFhnPxLfmqB8hjCHLBeuALzmzn19",
         "farmInfoList": []
+      },
+      {
+        "name": "UXD-USDC",
+        "base": "UXD",
+        "quote": "USDC",
+        "mintBase": "7kbnvuGBxxj8AG9qp8Scn56muWGaRaFqxg1FsRp3PaFT",
+        "mintQuote": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "swapInfo": "DkwiQyA2JfD8ARfvMbMqu2DD4XKRkewRZVDE94SZNxSS",
+        "farmInfoList": []
+      },
+      {
+        "name": "cUSDC-cUSDT",
+        "base": "cUSDC",
+        "quote": "cUSDT",
+        "mintBase": "993dVFL2uXWYeoXuEBFXR4BijeXdTv4s6BzsCjJZuwqk",
+        "mintQuote": "BTsbZDV7aCMRJ3VNy9ygV4Q2UeEo9GpR8D6VvmMZzNr8",
+        "swapInfo": "DzFzJyDTXG5YCWXN6DeVXbLGmpYbkX6PPHs1RNLX9fKk",
+        "farmInfoList": []
       }
     ],
     "tokenInfoList": [
@@ -82,6 +100,45 @@
           "price": "DZYZkJcFJThN9nZy4nK3hrHra1LaWeiyoZ9SMdLFEFpY",
           "product": "6Vi1i2rJj23CGxLQYHHVjoMwJm4pNWVGDESdDto7QqTk",
           "productName": "Crypto.GMT/USD"
+        }
+      },
+      {
+        "name": "UXD Stablecoin",
+        "mint": "7kbnvuGBxxj8AG9qp8Scn56muWGaRaFqxg1FsRp3PaFT",
+        "symbol": "UXD",
+        "decimals": 6,
+        "logoURI": "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/7kbnvuGBxxj8AG9qp8Scn56muWGaRaFqxg1FsRp3PaFT/uxd-icon-black.png",
+        "pyth": {
+          "mockPrice": 1,
+          "price": "11111111111111111111111111111111",
+          "product": "11111111111111111111111111111111",
+          "productName": "Mock.UXD/USD"
+        }
+      },
+      {
+        "name": "Solend USDC",
+        "mint": "993dVFL2uXWYeoXuEBFXR4BijeXdTv4s6BzsCjJZuwqk",
+        "symbol": "cUSDC",
+        "decimals": 6,
+        "logoURI": "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/993dVFL2uXWYeoXuEBFXR4BijeXdTv4s6BzsCjJZuwqk/logo.png",
+        "pyth": {
+          "mockPrice": 1.04,
+          "price": "11111111111111111111111111111111",
+          "product": "11111111111111111111111111111111",
+          "productName": "Mock.cUSDC/USD"
+        }
+      },
+      {
+        "name": "Solend USDT",
+        "mint": "BTsbZDV7aCMRJ3VNy9ygV4Q2UeEo9GpR8D6VvmMZzNr8",
+        "symbol": "cUSDT",
+        "decimals": 6,
+        "logoURI": "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/BTsbZDV7aCMRJ3VNy9ygV4Q2UeEo9GpR8D6VvmMZzNr8/logo.png",
+        "pyth": {
+          "mockPrice": 1.04,
+          "price": "11111111111111111111111111111111",
+          "product": "11111111111111111111111111111111",
+          "productName": "Mock.cUSDT/USD"
         }
       }
     ]
@@ -133,6 +190,34 @@
           {
             "name": "default",
             "farmInfo": "FNUPc2bZb9hVjhmcLq9C7iUhFq8WWE2HtdaRgf96B9tX"
+          }
+        ]
+      },
+      {
+        "name": "UXD-USDC",
+        "base": "UXD",
+        "quote": "USDC",
+        "mintBase": "7kbnvuGBxxj8AG9qp8Scn56muWGaRaFqxg1FsRp3PaFT",
+        "mintQuote": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "swapInfo": "5FytqcoUbBAbo3tSArdU3evMnCCgbUmhvrDWFJDLy12Y",
+        "farmInfoList": [
+          {
+            "name": "default",
+            "farmInfo": "G7cNunkiWP3HyUFySQh8gk9xnLSZMtuF5vRW83o3vUAo"
+          }
+        ]
+      },
+      {
+        "name": "cUSDC-cUSDT",
+        "base": "cUSDC",
+        "quote": "cUSDT",
+        "mintBase": "993dVFL2uXWYeoXuEBFXR4BijeXdTv4s6BzsCjJZuwqk",
+        "mintQuote": "BTsbZDV7aCMRJ3VNy9ygV4Q2UeEo9GpR8D6VvmMZzNr8",
+        "swapInfo": "HJuEyWQCHVY6ig45V4kzYEGPDgnt7Hm9Pmp4ihg1rbu9",
+        "farmInfoList": [
+          {
+            "name": "default",
+            "farmInfo": "HmCTu2EgrcL1ss3WPrpG4q5FDHVnRcLuZeXe6XWmqg9r"
           }
         ]
       }
@@ -191,7 +276,39 @@
         "mint": "7kbnvuGBxxj8AG9qp8Scn56muWGaRaFqxg1FsRp3PaFT",
         "symbol": "UXD",
         "decimals": 6,
-        "logoURI": "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/7kbnvuGBxxj8AG9qp8Scn56muWGaRaFqxg1FsRp3PaFT/uxd-icon-black.png"
+        "logoURI": "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/7kbnvuGBxxj8AG9qp8Scn56muWGaRaFqxg1FsRp3PaFT/uxd-icon-black.png",
+        "pyth": {
+          "mockPrice": 1,
+          "price": "11111111111111111111111111111111",
+          "product": "11111111111111111111111111111111",
+          "productName": "Mock.UXD/USD"
+        }
+      },
+      {
+        "name": "Solend USDC",
+        "mint": "993dVFL2uXWYeoXuEBFXR4BijeXdTv4s6BzsCjJZuwqk",
+        "symbol": "cUSDC",
+        "decimals": 6,
+        "logoURI": "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/993dVFL2uXWYeoXuEBFXR4BijeXdTv4s6BzsCjJZuwqk/logo.png",
+        "pyth": {
+          "mockPrice": 1.04,
+          "price": "11111111111111111111111111111111",
+          "product": "11111111111111111111111111111111",
+          "productName": "Mock.cUSDC/USD"
+        }
+      },
+      {
+        "name": "Solend USDT",
+        "mint": "BTsbZDV7aCMRJ3VNy9ygV4Q2UeEo9GpR8D6VvmMZzNr8",
+        "symbol": "cUSDT",
+        "decimals": 6,
+        "logoURI": "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/BTsbZDV7aCMRJ3VNy9ygV4Q2UeEo9GpR8D6VvmMZzNr8/logo.png",
+        "pyth": {
+          "mockPrice": 1.04,
+          "price": "11111111111111111111111111111111",
+          "product": "11111111111111111111111111111111",
+          "productName": "Mock.cUSDT/USD"
+        }
       }
     ]
   },

@@ -2476,11 +2476,28 @@
             "type": "u128"
           },
           {
+            "name": "disableStablePriceDiffCheck",
+            "type": "bool"
+          },
+          {
+            "name": "disableQuoteTokenPriceCheck",
+            "type": "bool"
+          },
+          {
+            "name": "reservedU8",
+            "type": {
+              "array": [
+                "u8",
+                6
+              ]
+            }
+          },
+          {
             "name": "reservedU64",
             "type": {
               "array": [
                 "u64",
-                16
+                15
               ]
             }
           }
@@ -2869,9 +2886,16 @@
       "code": 6069,
       "name": "DepeggedQuotePrice",
       "msg": "DepeggedQuotePrice"
+    },
+    {
+      "code": 6070,
+      "name": "InvalidWithdrawalAmount",
+      "msg": "Invalid withdrawal amount"
+    },
+    {
+      "code": 6071,
+      "name": "InvalidStakingAmount",
+      "msg": "Invalid staking amount"
     }
-  ],
-  "metadata": {
-    "address": "J4zjwmzDtbPtviP2cQh2DwdUijYu1d3J1jfBDzzXgs9D"
-  }
+  ]
 }
