@@ -16,6 +16,7 @@ import {
 } from "./utils";
 import { Command } from "commander";
 import * as https from "https";
+import { getSwapOutResult } from "../calculations/swapOutAmount";
 
 // the example transaction logic
 // this function established 2 transaction, first sell USDC for USDT and second sell USDT for USDC
@@ -56,6 +57,15 @@ const runExample = async (keypairFilePath: string, network: string) => {
     )
   ).address;
 
+  const swapoutResult = await getSwapOutResult(
+    new PublicKey(usdcTokenConfig.mint),
+    new PublicKey(usdtTokenConfig.mint),
+    "1",
+    0.01,
+    connection,
+    deployConfig);
+  console.info(swapoutResult);
+
   // example transaction 1: sell USDC for USDT
   console.info("transaction 1: sell 1 USDC for USDT");
   const { transaction: transactionUSDCforUSDT, userTransferAuthority: tmpAuthorityA } =
@@ -65,7 +75,7 @@ const runExample = async (keypairFilePath: string, network: string) => {
       usdcTokenAccount,
       usdtTokenAccount,
       "1",
-      "0.9",
+      swapoutResult.amountOutWithSlippage,
       deployConfig,
       poolConfig,
       usdcTokenConfig,
@@ -86,6 +96,15 @@ const runExample = async (keypairFilePath: string, network: string) => {
 
   // example transaction 2: sell USDT for USDC
   console.info("transaction 2: sell 1 USDT for USDC");
+  const swapoutResult2 = await getSwapOutResult(
+    new PublicKey(usdtTokenConfig.mint),
+    new PublicKey(usdcTokenConfig.mint),
+    "1",
+    0.01,
+    connection,
+    deployConfig);
+  console.info(swapoutResult2);
+
   const { transaction: transactionUSDTforUSDC, userTransferAuthority: tmpAuthorityB } =
     await createSwapTransaction(
       keyPair.publicKey,
@@ -93,7 +112,7 @@ const runExample = async (keypairFilePath: string, network: string) => {
       usdtTokenAccount,
       usdcTokenAccount,
       "1",
-      "0.9",
+      swapoutResult2.amountOutWithSlippage,
       deployConfig,
       poolConfig,
       usdtTokenConfig,
@@ -114,7 +133,6 @@ const runExample = async (keypairFilePath: string, network: string) => {
 };
 
 const getConfig = async () => {
-  const https = require("https");
   const options = {
     hostname: "app.deltafi.trade",
     port: 443,
