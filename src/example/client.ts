@@ -12,7 +12,8 @@ import { getDeltafiDexV2, makeProvider } from "../anchor/anchor_utils";
 import { DeltafiUser, SwapInfo } from "../anchor/type_definitions";
 import { exponentiate, mergeTransactions } from "./utils";
 import { toBufferLE } from "bigint-buffer";
-import { BN } from "@project-serum/anchor";
+import { web3, BN } from "@project-serum/anchor";
+import { AccountLayout } from "@solana/spl-token";
 
 /**
  * the API function that creates a deltafi swap transaction
@@ -155,6 +156,102 @@ export async function createSwapTransaction(
     transactionCreateDeltafiUser,
     transactionSwap,
   ]);
+  transaction.recentBlockhash = (await connection.getLatestBlockhash("max")).blockhash;
+  transaction.feePayer = walletPubkey;
+
+  return { transaction, userTransferAuthority };
+}
+
+export async function createDepositTransaction(
+  program: any,
+  connection: Connection,
+  poolConfig: any,
+  swapInfo: any,
+  userTokenBase: PublicKey,
+  userTokenQuote: PublicKey,
+  walletPubkey: PublicKey,
+  lpUser: any,
+  baseAmount: BN,
+  quoteAmount: BN,
+) {
+  let baseSourceRef = userTokenBase;
+  let quoteSourceRef = userTokenQuote;
+
+  const [lpPublicKey, lpBump] = await PublicKey.findProgramAddress(
+    [
+      Buffer.from("LiquidityProvider"),
+      new PublicKey(poolConfig.swapInfo).toBuffer(),
+      walletPubkey.toBuffer(),
+    ],
+    program.programId,
+  );
+
+  const userTransferAuthority = Keypair.generate();
+  let transaction = new Transaction();
+  transaction
+    .add(
+      Token.createApproveInstruction(
+        TOKEN_PROGRAM_ID,
+        baseSourceRef,
+        userTransferAuthority.publicKey,
+        walletPubkey,
+        [],
+        u64.fromBuffer(toBufferLE(BigInt(baseAmount.toString()), 8)),
+      ),
+    )
+    .add(
+      Token.createApproveInstruction(
+        TOKEN_PROGRAM_ID,
+        quoteSourceRef,
+        userTransferAuthority.publicKey,
+        walletPubkey,
+        [],
+        u64.fromBuffer(toBufferLE(BigInt(quoteAmount.toString()), 8)),
+      ),
+    );
+
+  const depositAccounts = {
+    swapInfo: new PublicKey(poolConfig.swapInfo),
+    userTokenBase: baseSourceRef,
+    userTokenQuote,
+    quoteSourceRef,
+    liquidityProvider: lpPublicKey,
+    tokenBase: swapInfo.tokenBase,
+    tokenQuote: swapInfo.tokenQuote,
+    pythPriceBase: swapInfo.pythPriceBase,
+    pythPriceQuote: swapInfo.pythPriceQuote,
+    userAuthority: userTransferAuthority.publicKey,
+    tokenProgram: token.TOKEN_PROGRAM_ID,
+  };
+
+  if (swapInfo.swapType.stableSwap) {
+    transaction.add(
+      program.transaction.depositToStableSwap(baseAmount, quoteAmount, new BN(0), new BN(0), {
+        accounts: depositAccounts,
+      }),
+    );
+  } else {
+    transaction.add(
+      program.transaction.depositToNormalSwap(baseAmount, quoteAmount, new BN(0), new BN(0), {
+        accounts: depositAccounts,
+      }),
+    );
+  }
+
+  if (lpUser === null) {
+    const createLpTransaction = program.transaction.createLiquidityProvider(lpBump, {
+      accounts: {
+        marketConfig: swapInfo.configKey,
+        swapInfo: new PublicKey(poolConfig.swapInfo),
+        liquidityProvider: lpPublicKey,
+        owner: walletPubkey,
+        systemProgram: web3.SystemProgram.programId,
+        rent: web3.SYSVAR_RENT_PUBKEY,
+      },
+    });
+    transaction = mergeTransactions([createLpTransaction, transaction]);
+  }
+
   transaction.recentBlockhash = (await connection.getLatestBlockhash("max")).blockhash;
   transaction.feePayer = walletPubkey;
 

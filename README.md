@@ -11,12 +11,17 @@ yarn install
 
 Then run the example with test keypair on testnet
 ```
-yarn ts-node src/example/example.ts run -k ./keypairs/testnet-keypair.json -n testnet
+yarn ts-node src/example/example.ts swap -k ./keypairs/testnet-keypair.json -n testnet
 ```
 
-You can also use your own keypair on mainnet-beta to swap between `USDC` and `USDT`
+You can also use your own keypair on mainnet-beta to swap `1` token between `USDC` and `USDT`
 ```
-yarn ts-node src/example/example.ts run -k <your_keypair> -n mainnet-beta
+yarn ts-node src/example/example.ts swap -k <your_keypair> -n mainnet-beta
+```
+
+Deposit to `1` token to `USDC-USDT` pool.
+```
+yarn ts-node src/example/example.ts deposit -k <your_keypair> -n mainnet-beta
 ```
 
 The config in this repo may not be up to date. You can read the latest config with our public api.
