@@ -6,7 +6,11 @@ import {
   sendAndConfirmTransaction,
 } from "@solana/web3.js";
 import { exit } from "process";
-import { createDepositTransaction, createSwapTransaction } from "./client";
+import {
+  createDepositTransaction,
+  createSwapTransaction,
+  createWithdrawTransaction,
+} from "./client";
 import {
   getDeploymentConfig,
   getOrCreateAssociatedAccountInfo,
@@ -18,7 +22,7 @@ import { Command } from "commander";
 import * as https from "https";
 import { getSwapOutResult } from "../calculations/swapOutAmount";
 import { getDeltafiDexV2, makeProvider } from "../anchor/anchor_utils";
-import { AnchorProvider, BN } from "@project-serum/anchor";
+import { BN } from "@project-serum/anchor";
 
 // the example transaction logic
 // this function established 2 transaction, first sell USDC for USDT and second sell USDT for USDC
@@ -214,6 +218,69 @@ const doDeposit = async (keypairFilePath: string, network: string) => {
   }
 };
 
+const doWithdraw = async (keypairFilePath: string, network: string) => {
+  if (network !== "testnet" && network !== "mainnet-beta") {
+    console.error("wrong network!");
+    exit(1);
+  }
+
+  const deployConfig = getDeploymentConfig(network === "mainnet-beta" ? "mainnet-prod" : "testnet");
+  const poolConfig = getPoolConfig(deployConfig, "USDC-USDT");
+  console.info("pool config:", poolConfig);
+
+  const usdcTokenConfig = getTokenConfig(deployConfig, "USDC");
+  const usdtTokenConfig = getTokenConfig(deployConfig, "USDT");
+
+  const keyPair = readKeypair(keypairFilePath);
+  const connection = new Connection(clusterApiUrl(deployConfig.network), "confirmed");
+
+  const program = getDeltafiDexV2(
+    new PublicKey(deployConfig.programId),
+    makeProvider(connection, {}),
+  );
+
+  // get USDC/USDT token account from the wallet
+  const usdcTokenAccount = (
+    await getOrCreateAssociatedAccountInfo(
+      connection,
+      keyPair,
+      new PublicKey(usdcTokenConfig.mint),
+      keyPair.publicKey,
+    )
+  ).address;
+  const usdtTokenAccount = (
+    await getOrCreateAssociatedAccountInfo(
+      connection,
+      keyPair,
+      new PublicKey(usdtTokenConfig.mint),
+      keyPair.publicKey,
+    )
+  ).address;
+
+  const poolPubkey = new PublicKey(poolConfig.swapInfo);
+  const swapInfo = await program.account.swapInfo.fetch(poolPubkey);
+
+  try {
+    const withdrawTransaction = await createWithdrawTransaction(
+      program,
+      connection,
+      poolConfig,
+      swapInfo,
+      usdcTokenAccount,
+      usdtTokenAccount,
+      keyPair.publicKey,
+      new BN(1000000),
+      new BN(1000000),
+    );
+
+    const signature = await sendAndConfirmTransaction(connection, withdrawTransaction, [keyPair]);
+    console.info("withdraw succeeded with signature: " + signature);
+  } catch (e) {
+    console.error("withdraw failed with error: " + e);
+    exit(1);
+  }
+};
+
 const getConfig = async () => {
   const options = {
     hostname: "app.deltafi.trade",
@@ -252,6 +319,14 @@ const main = () => {
     .option("-n --network <mainnet-beta or testnet>")
     .action(async (option) => {
       doDeposit(option.keypair, option.network);
+    });
+
+  program
+    .command("withdraw")
+    .option("-k --keypair <wallet keypair for example transactions>")
+    .option("-n --network <mainnet-beta or testnet>")
+    .action(async (option) => {
+      doWithdraw(option.keypair, option.network);
     });
 
   program.command("get-config").action(getConfig);

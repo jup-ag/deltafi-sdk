@@ -257,3 +257,62 @@ export async function createDepositTransaction(
 
   return { transaction, userTransferAuthority };
 }
+
+export async function createWithdrawTransaction(
+  program: any,
+  connection: Connection,
+  poolConfig: any,
+  swapInfo: any,
+  userTokenBase: PublicKey,
+  userTokenQuote: PublicKey,
+  walletPubkey: PublicKey,
+  baseShare: BN,
+  quoteShare: BN,
+) {
+  let baseSourceRef = userTokenBase;
+  let quoteSourceRef = userTokenQuote;
+
+  const [lpPublicKey] = await PublicKey.findProgramAddress(
+    [
+      Buffer.from("LiquidityProvider"),
+      new PublicKey(poolConfig.swapInfo).toBuffer(),
+      walletPubkey.toBuffer(),
+    ],
+    program.programId,
+  );
+
+  let transaction = new Transaction();
+  const withdrawAccounts = {
+    swapInfo: new PublicKey(poolConfig.swapInfo),
+    userTokenBase: baseSourceRef,
+    userTokenQuote,
+    quoteSourceRef,
+    liquidityProvider: lpPublicKey,
+    tokenBase: swapInfo.tokenBase,
+    tokenQuote: swapInfo.tokenQuote,
+    adminFeeTokenBase: swapInfo.adminFeeTokenBase,
+    adminFeeTokenQuote: swapInfo.adminFeeTokenQuote,
+    pythPriceBase: swapInfo.pythPriceBase,
+    pythPriceQuote: swapInfo.pythPriceQuote,
+    userAuthority: walletPubkey,
+    tokenProgram: token.TOKEN_PROGRAM_ID,
+  };
+  if (swapInfo.swapType.stableSwap) {
+    transaction.add(
+      program.transaction.withdrawFromStableSwap(baseShare, quoteShare, new BN(0), new BN(0), {
+        accounts: withdrawAccounts,
+      }),
+    );
+  } else {
+    transaction.add(
+      program.transaction.withdrawFromNormalSwap(baseShare, quoteShare, new BN(0), new BN(0), {
+        accounts: withdrawAccounts,
+      }),
+    );
+  }
+
+  transaction.recentBlockhash = (await connection.getLatestBlockhash("max")).blockhash;
+  transaction.feePayer = walletPubkey;
+
+  return transaction;
+}
