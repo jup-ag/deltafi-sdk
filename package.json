@@ -9,7 +9,9 @@
     "type": "git",
     "url": "git+https://github.com/delta-fi/deltafi-sdk.git"
   },
-  "keywords": ["example, jupiter, deltafi, sdk"],
+  "keywords": [
+    "deltafi", "sdk"
+  ],
   "author": "",
   "license": "ISC",
   "bugs": {
@@ -24,6 +26,7 @@
     "@solana/wallet-adapter-wallets": "^0.11.3",
     "@solana/web3.js": "^1.32.0",
     "@types/node": "^12.0.0",
+    "@types/node-fetch": "^2.6.1",
     "bigint-buffer": "^1.1.5",
     "bignumber.js": "^9.0.1",
     "bn.js": "^5.2.0",
@@ -35,6 +38,9 @@
     "eslint-plugin-prettier": "^4.0.0",
     "prettier": "^2.5.1",
     "typescript": "^4.5.5"
+  },
+  "resolutions": {
+    "cross-fetch": "^3.1.5"
   },
   "homepage": "https://github.com/delta-fi/deltafi-sdk#readme"
 }
