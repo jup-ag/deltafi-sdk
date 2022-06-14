@@ -1,6 +1,8 @@
 export type PythConfig = {
   price: string;
   product: string;
+  productName: string;
+  mockPrice: number;
 };
 
 export type TokenConfig = {

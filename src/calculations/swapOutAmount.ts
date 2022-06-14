@@ -1,19 +1,9 @@
 import BigNumber from "bignumber.js";
 import { calculateOutAmountNormalSwap, calculateOutAmountStableSwap } from "./calculation";
 import { PoolState, SwapConfig, SwapInfo } from "../anchor/type_definitions";
-import {
-  WAD,
-  bnToString,
-  exponentiate,
-  exponentiatedBy,
-  SWAP_DIRECTION,
-  getTokenConfigByMint,
-  getPoolAddressByTokens,
-} from "./utils";
+import { WAD, bnToString, exponentiate, exponentiatedBy, SWAP_DIRECTION } from "./utils";
 import { TokenConfig } from "./types";
-import { Connection, PublicKey } from "@solana/web3.js";
-import { getDeltafiDexV2, makeProvider } from "../anchor/anchor_utils";
-import { parsePriceData } from "@pythnetwork/client";
+import { getMarketPriceTuple, SymbolToPythPriceData } from "../anchor/pyth_utils";
 
 export type SwapOutResult = {
   amountOut: string;
@@ -35,53 +25,32 @@ export type SwapOutResult = {
  * @returns amount out information
  */
 export async function getSwapOutResult(
-  mintFrom: PublicKey,
-  mintTo: PublicKey,
+  symbolToPythPriceData: SymbolToPythPriceData,
+  swapInfo: SwapInfo,
+  fromToken: TokenConfig,
+  toToken: TokenConfig,
   amountIn: string,
   maxSlippage: number,
-  connection: Connection,
-  deploymentConfig: any,
 ): Promise<SwapOutResult> {
-  const fromToken = getTokenConfigByMint(deploymentConfig, mintFrom);
-  const toToken = getTokenConfigByMint(deploymentConfig, mintTo);
-  const poolAddress = getPoolAddressByTokens(deploymentConfig, fromToken, toToken);
-  const program = getDeltafiDexV2(
-    new PublicKey(deploymentConfig.programId),
-    makeProvider(connection, {}),
-  );
-  const swapInfo: SwapInfo = await program.account.swapInfo.fetch(poolAddress);
-
   const { baseToken, quoteToken } =
     fromToken.mint === swapInfo.mintBase.toBase58()
       ? { baseToken: fromToken, quoteToken: toToken }
       : { baseToken: toToken, quoteToken: fromToken };
 
-  const basePythPriceData = parsePriceData(
-    (await connection.getAccountInfo(new PublicKey(baseToken.pyth.price))).data,
+  const marketPriceTuple = getMarketPriceTuple(
+    symbolToPythPriceData,
+    baseToken.symbol,
+    quoteToken.symbol,
   );
-  const quotePythPriceData = parsePriceData(
-    (await connection.getAccountInfo(new PublicKey(quoteToken.pyth.price))).data,
-  );
-
-  const marketPrice = new BigNumber(basePythPriceData.price).dividedBy(
-    new BigNumber(quotePythPriceData.price),
-  );
-  const marketPriceHigh = new BigNumber(
-    basePythPriceData.price + basePythPriceData.confidence,
-  ).dividedBy(new BigNumber(quotePythPriceData.price - quotePythPriceData.confidence));
-  const marketPriceLow = new BigNumber(
-    basePythPriceData.price - basePythPriceData.confidence,
-  ).dividedBy(new BigNumber(quotePythPriceData.price + quotePythPriceData.confidence));
-
   return calculateSwapOutResult(
     swapInfo,
     fromToken,
     toToken,
     amountIn,
     maxSlippage,
-    marketPrice,
-    marketPriceLow,
-    marketPriceHigh,
+    marketPriceTuple.marketPrice,
+    marketPriceTuple.lowPrice,
+    marketPriceTuple.highPrice,
   );
 }
 

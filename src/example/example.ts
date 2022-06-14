@@ -1,17 +1,9 @@
-import {
-  clusterApiUrl,
-  Connection,
-  Keypair,
-  PublicKey,
-  sendAndConfirmTransaction,
-} from "@solana/web3.js";
+import { clusterApiUrl, Connection, PublicKey, sendAndConfirmTransaction } from "@solana/web3.js";
 import { exit } from "process";
+import { createDepositTransaction, createWithdrawTransaction } from "./client";
+import { createSwapTransaction, getDeltafiUser } from "../anchor/transaction_utils";
 import {
-  createDepositTransaction,
-  createSwapTransaction,
-  createWithdrawTransaction,
-} from "./client";
-import {
+  exponentiate,
   getDeploymentConfig,
   getOrCreateAssociatedAccountInfo,
   getPoolConfig,
@@ -23,6 +15,8 @@ import * as https from "https";
 import { getSwapOutResult } from "../calculations/swapOutAmount";
 import { getDeltafiDexV2, makeProvider } from "../anchor/anchor_utils";
 import { BN } from "@project-serum/anchor";
+import { getSymbolToPythPriceData } from "../anchor/pyth_utils";
+import BigNumber from "bignumber.js";
 
 // the example transaction logic
 // this function established 2 transaction, first sell USDC for USDT and second sell USDT for USDC
@@ -39,11 +33,22 @@ const doSwap = async (keypairFilePath: string, network: string) => {
   const poolConfig = getPoolConfig(deployConfig, "USDC-USDT");
   console.info("pool config:", poolConfig);
 
-  const usdcTokenConfig = getTokenConfig(deployConfig, "USDC");
-  const usdtTokenConfig = getTokenConfig(deployConfig, "USDT");
+  const connection = new Connection(clusterApiUrl(deployConfig.network), "confirmed");
+  const program = getDeltafiDexV2(
+    new PublicKey(deployConfig.programId),
+    makeProvider(connection, {}),
+  );
 
   const keyPair = readKeypair(keypairFilePath);
-  const connection = new Connection(clusterApiUrl(deployConfig.network), "confirmed");
+  const swapInfo = await program.account.swapInfo.fetch(new PublicKey(poolConfig.swapInfo));
+  const deltafiUser = await getDeltafiUser(program, swapInfo.configKey, keyPair.publicKey);
+  const symbolToPythPriceData = await getSymbolToPythPriceData(
+    connection,
+    deployConfig.tokenInfoList,
+  );
+
+  const usdcTokenConfig = getTokenConfig(deployConfig, "USDC");
+  const usdtTokenConfig = getTokenConfig(deployConfig, "USDT");
 
   // get USDC/USDT token account from the wallet
   const usdcTokenAccount = (
@@ -64,35 +69,42 @@ const doSwap = async (keypairFilePath: string, network: string) => {
   ).address;
 
   const swapoutResult = await getSwapOutResult(
-    new PublicKey(usdcTokenConfig.mint),
-    new PublicKey(usdtTokenConfig.mint),
+    symbolToPythPriceData,
+    swapInfo,
+    usdcTokenConfig,
+    usdtTokenConfig,
     "1",
-    0.01,
-    connection,
-    deployConfig,
+    0.1,
   );
   console.info(swapoutResult);
 
   // example transaction 1: sell USDC for USDT
   console.info("transaction 1: sell 1 USDC for USDT");
-  const { transaction: transactionUSDCforUSDT, userTransferAuthority: tmpAuthorityA } =
-    await createSwapTransaction(
+  try {
+    const { transaction, signers } = await createSwapTransaction(
+      poolConfig,
+      program,
+      swapInfo,
+      deltafiUser,
       keyPair.publicKey,
-      connection,
       usdcTokenAccount,
       usdtTokenAccount,
-      "1",
-      swapoutResult.amountOutWithSlippage,
-      deployConfig,
-      poolConfig,
-      usdcTokenConfig,
-      usdtTokenConfig,
+      new BN(exponentiate(new BigNumber("1"), usdcTokenConfig.decimals).toFixed(0)),
+      new BN(
+        exponentiate(
+          new BigNumber(swapoutResult.amountOutWithSlippage),
+          usdtTokenConfig.decimals,
+        ).toFixed(0),
+      ),
+      { sellBase: {} },
     );
 
-  try {
+    transaction.recentBlockhash = (await connection.getLatestBlockhash("max")).blockhash;
+    transaction.feePayer = keyPair.publicKey;
+
     // may use wallet sdk for signature in application
-    const signature = await sendAndConfirmTransaction(connection, transactionUSDCforUSDT, [
-      tmpAuthorityA,
+    const signature = await sendAndConfirmTransaction(connection, transaction, [
+      ...signers,
       keyPair,
     ]);
     console.info("transaction USDC -> USDT succeeded with signature: " + signature);
@@ -104,33 +116,40 @@ const doSwap = async (keypairFilePath: string, network: string) => {
   // example transaction 2: sell USDT for USDC
   console.info("transaction 2: sell 1 USDT for USDC");
   const swapoutResult2 = await getSwapOutResult(
-    new PublicKey(usdtTokenConfig.mint),
-    new PublicKey(usdcTokenConfig.mint),
+    symbolToPythPriceData,
+    swapInfo,
+    usdtTokenConfig,
+    usdcTokenConfig,
     "1",
-    0.01,
-    connection,
-    deployConfig,
+    0.1,
   );
   console.info(swapoutResult2);
 
-  const { transaction: transactionUSDTforUSDC, userTransferAuthority: tmpAuthorityB } =
-    await createSwapTransaction(
+  try {
+    const { transaction, signers } = await createSwapTransaction(
+      poolConfig,
+      program,
+      swapInfo,
+      deltafiUser,
       keyPair.publicKey,
-      connection,
       usdtTokenAccount,
       usdcTokenAccount,
-      "1",
-      swapoutResult2.amountOutWithSlippage,
-      deployConfig,
-      poolConfig,
-      usdtTokenConfig,
-      usdcTokenConfig,
+      new BN(exponentiate(new BigNumber("1"), usdtTokenConfig.decimals).toFixed(0)),
+      new BN(
+        exponentiate(
+          new BigNumber(swapoutResult.amountOutWithSlippage),
+          usdcTokenConfig.decimals,
+        ).toFixed(0),
+      ),
+      { sellQuote: {} },
     );
 
-  try {
+    transaction.recentBlockhash = (await connection.getLatestBlockhash("max")).blockhash;
+    transaction.feePayer = keyPair.publicKey;
+
     // may use wallet sdk for signature in application
-    const signature = await sendAndConfirmTransaction(connection, transactionUSDTforUSDC, [
-      tmpAuthorityB,
+    const signature = await sendAndConfirmTransaction(connection, transaction, [
+      ...signers,
       keyPair,
     ]);
     console.info("transaction USDT -> USDC succeeded with signature: " + signature);
