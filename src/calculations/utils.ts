@@ -39,11 +39,6 @@ export function exponentiate(num: BigNumber | string, decimals: number): BigNumb
   return new BigNumber(num).multipliedBy(new BigNumber(`1e+${decimals}`));
 }
 
-export enum SWAP_DIRECTION {
-  SellBase = 0,
-  SellQuote,
-}
-
 export function getTokenConfigByMint(deploymentConfig, tokenMint: PublicKey): TokenConfig {
   const tokenConfigList: TokenConfig[] = deploymentConfig.tokenInfoList;
   return tokenConfigList?.find(

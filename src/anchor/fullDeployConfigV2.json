@@ -14,7 +14,12 @@
         "mintBase": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
         "mintQuote": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
         "swapInfo": "CjCwyW6Vpxu6srdzVP7NyV6DBwxPmyD2PXVAYcJXVqtG",
-        "farmInfoList": []
+        "farmInfoList": [
+          {
+            "name": "default",
+            "farmInfo": "AN3VXx4VEeGz2kAfrSekUbG2GFooWuPtgCUf5Xpgwmvs"
+          }
+        ]
       },
       {
         "name": "SOL-USDC",
@@ -23,7 +28,12 @@
         "mintBase": "So11111111111111111111111111111111111111112",
         "mintQuote": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
         "swapInfo": "H28JgPAZLywdezp9kZmy1jo2RdxVkZhoVbxKn3PwCAqs",
-        "farmInfoList": []
+        "farmInfoList": [
+          {
+            "name": "default",
+            "farmInfo": "HoC6nbA5E2uKKjERT8sbrgrg3vEyhd4uUj7x7cbX9BPX"
+          }
+        ]
       },
       {
         "name": "GMT-USDC",
@@ -41,7 +51,12 @@
         "mintBase": "7kbnvuGBxxj8AG9qp8Scn56muWGaRaFqxg1FsRp3PaFT",
         "mintQuote": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
         "swapInfo": "DkwiQyA2JfD8ARfvMbMqu2DD4XKRkewRZVDE94SZNxSS",
-        "farmInfoList": []
+        "farmInfoList": [
+          {
+            "name": "default",
+            "farmInfo": "2H3PPDwkvMoo536Lk66YDodr4nqFNnFjfRR7s9LZh85F"
+          }
+        ]
       },
       {
         "name": "cUSDC-cUSDT",
@@ -50,7 +65,12 @@
         "mintBase": "993dVFL2uXWYeoXuEBFXR4BijeXdTv4s6BzsCjJZuwqk",
         "mintQuote": "BTsbZDV7aCMRJ3VNy9ygV4Q2UeEo9GpR8D6VvmMZzNr8",
         "swapInfo": "DzFzJyDTXG5YCWXN6DeVXbLGmpYbkX6PPHs1RNLX9fKk",
-        "farmInfoList": []
+        "farmInfoList": [
+          {
+            "name": "default",
+            "farmInfo": "SDv2LbXGFRVpm7FkNmUu46dvc8MavwPW57c48bwkpg3"
+          }
+        ]
       }
     ],
     "tokenInfoList": [
@@ -220,6 +240,20 @@
             "farmInfo": "HmCTu2EgrcL1ss3WPrpG4q5FDHVnRcLuZeXe6XWmqg9r"
           }
         ]
+      },
+      {
+        "name": "mSOL-SOL",
+        "base": "mSOL",
+        "quote": "SOL",
+        "mintBase": "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So",
+        "mintQuote": "So11111111111111111111111111111111111111112",
+        "swapInfo": "61sRds3trcEqAwC9G7ATQwXTJe4xZ6t2fq8zWpSnhUx7",
+        "farmInfoList": [
+          {
+            "name": "default",
+            "farmInfo": "Fxycx73svyvVK1MFvbxhdY3EgXeuiU77iLQbfrd5wjg3"
+          }
+        ]
       }
     ],
     "tokenInfoList": [
@@ -257,6 +291,18 @@
           "price": "3vxLXJqLqF3JG5TCbYycbKWRBbCJQLxQmBGCkyqEEefL",
           "product": "Av6XyAMJnyi68FdsKSPYgzfXGjYrrt6jcAMwtvzLCqaM",
           "productName": "Crypto.USDT/USD"
+        }
+      },
+      {
+        "name": "Marinade staked SOL (mSOL)",
+        "mint": "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So",
+        "symbol": "mSOL",
+        "decimals": 9,
+        "logoURI": "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So/logo.png",
+        "pyth": {
+          "price": "E4v1BBgoso9s64TQvmyownAVJbhbEPGyzA3qn4n46qj9",
+          "product": "BS2iAqT67j8hA9Jji4B8UpL3Nfw9kwPfU5s4qeaf1e7r",
+          "productName": "Crypto.MSOL/USD"
         }
       },
       {

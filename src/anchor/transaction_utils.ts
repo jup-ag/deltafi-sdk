@@ -224,12 +224,13 @@ export async function createDepositTransaction(
   }
 
   if (lpUser === null) {
-    const createLpTransaction = program.transaction.createLiquidityProvider(lpBump, {
+    const createLpTransaction = program.transaction.createLiquidityProviderV2(lpBump, {
       accounts: {
         marketConfig: swapInfo.configKey,
         swapInfo: new PublicKey(poolConfig.swapInfo),
         liquidityProvider: lpPublicKey,
         owner: walletPubkey,
+        payer: walletPubkey,
         systemProgram: web3.SystemProgram.programId,
         rent: web3.SYSVAR_RENT_PUBKEY,
       },

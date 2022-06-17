@@ -1,11 +1,12 @@
 import BigNumber from "bignumber.js";
 import { calculateOutAmountNormalSwap, calculateOutAmountStableSwap } from "./calculation";
-import { PoolState, SwapConfig, SwapInfo } from "../anchor/type_definitions";
-import { WAD, bnToString, exponentiate, exponentiatedBy, SWAP_DIRECTION } from "./utils";
+import { PoolState, SwapConfig, SwapInfo, SwapDirection } from "../anchor/type_definitions";
+import { WAD, bnToString, exponentiate, exponentiatedBy } from "./utils";
 import { TokenConfig } from "./types";
-import { getMarketPriceTuple, SymbolToPythPriceData } from "../anchor/pyth_utils";
+import { getPythMarketPriceTuple, SymbolToPythPriceData } from "../anchor/pyth_utils";
 
 export type SwapOutResult = {
+  amountIn: string;
   amountOut: string;
   amountOutWithSlippage: string;
   fee: string;
@@ -37,7 +38,7 @@ export async function getSwapOutResult(
       ? { baseToken: fromToken, quoteToken: toToken }
       : { baseToken: toToken, quoteToken: fromToken };
 
-  const marketPriceTuple = getMarketPriceTuple(
+  const marketPriceTuple = getPythMarketPriceTuple(
     symbolToPythPriceData,
     baseToken.symbol,
     quoteToken.symbol,
@@ -81,6 +82,7 @@ export function calculateSwapOutResult(
   const amountInBN: BigNumber = new BigNumber(amountIn);
   if (amountInBN.isNaN()) {
     return {
+      amountIn,
       amountOut: "",
       amountOutWithSlippage: "",
       fee: "",
@@ -92,7 +94,7 @@ export function calculateSwapOutResult(
     throw Error(`invalid amount input: ${amountIn}`);
   }
 
-  const swapDirection: SWAP_DIRECTION = getSwapDirection(fromToken, toToken, swapInfo);
+  const swapDirection: SwapDirection = getSwapDirection(fromToken, toToken, swapInfo);
 
   const { amountOut: grossAmountOutBN, priceImpact: priceImpactBN } =
     getSwappedAmountsAndPriceImpact(
@@ -133,6 +135,7 @@ export function calculateSwapOutResult(
   );
 
   return {
+    amountIn,
     amountOut,
     amountOutWithSlippage,
     fee,
@@ -143,7 +146,7 @@ export function calculateSwapOutResult(
 
 export function getSwappedAmountsAndPriceImpact(
   swapInfo: SwapInfo,
-  swapDirection: SWAP_DIRECTION,
+  swapDirection: SwapDirection,
   amountIn: BigNumber,
   marketPrice: BigNumber,
   marketPriceSellBase?: BigNumber,
@@ -161,7 +164,7 @@ export function getSwappedAmountsAndPriceImpact(
     marketPriceSellQuote = marketPrice;
   }
 
-  if (swapDirection === SWAP_DIRECTION.SellBase) {
+  if (swapDirection.sellBase) {
     // sell base case
     const rawAmountIn: BigNumber = exponentiate(amountIn, swapInfo.mintBaseDecimals);
     const normalizedMaketPrice = normalizeMarketPriceWithDecimals(
@@ -181,7 +184,7 @@ export function getSwappedAmountsAndPriceImpact(
       amountOut: exponentiatedBy(rawAmountOut, swapInfo.mintQuoteDecimals),
       priceImpact,
     };
-  } else if (swapDirection === SWAP_DIRECTION.SellQuote) {
+  } else if (swapDirection.sellQuote) {
     // sell quote case
     const rawAmountIn: BigNumber = exponentiate(amountIn, swapInfo.mintQuoteDecimals);
     const normalizedMaketPrice = normalizeMarketPriceWithDecimals(
@@ -308,37 +311,36 @@ export function getSwapDirection(
   fromToken: TokenConfig,
   toToken: TokenConfig,
   swapInfo: SwapInfo,
-): SWAP_DIRECTION {
+): SwapDirection {
   if (
     fromToken.mint === swapInfo.mintBase.toBase58() &&
     toToken.mint === swapInfo.mintQuote.toBase58()
   ) {
-    return SWAP_DIRECTION.SellBase;
+    return { sellBase: {} };
   } else if (
     fromToken.mint === swapInfo.mintQuote.toBase58() &&
     toToken.mint === swapInfo.mintBase.toBase58()
   ) {
-    return SWAP_DIRECTION.SellQuote;
+    return { sellQuote: {} };
   }
 
   throw Error("Invalid to/from token pair: " + fromToken.mint + " " + toToken.mint);
 }
 
 // get the opposite swap direction from the current swap direction
-export function getOppsiteSwapDirection(swapDirection: SWAP_DIRECTION): SWAP_DIRECTION {
-  switch (swapDirection) {
-    case SWAP_DIRECTION.SellBase:
-      return SWAP_DIRECTION.SellQuote;
-    case SWAP_DIRECTION.SellQuote:
-      return SWAP_DIRECTION.SellBase;
-    default:
-      throw Error("Invalid swapDirection: " + swapDirection);
+export function getOppsiteSwapDirection(swapDirection: SwapDirection) {
+  if (swapDirection.sellBase) {
+    return { sellQuote: {} };
+  } else if (swapDirection.sellQuote) {
+    return { sellBase: {} };
+  } else {
+    throw Error("Invalid swapDirection: " + swapDirection);
   }
 }
 
 // check if there is sufficient reserves after swap with the reserve limit
 export function IsSufficientReserve(
-  swapDirection: SWAP_DIRECTION,
+  swapDirection: SwapDirection,
   swapInfo: SwapInfo,
   amountAddedIn: BigNumber,
   amountSubstractedOut: BigNumber,
@@ -415,7 +417,7 @@ export function getReservesAfterSwap(
   poolState: PoolState,
   amountAddedIn: BigNumber,
   amountSubstractedOut: BigNumber,
-  swapDirection: SWAP_DIRECTION,
+  swapDirection: SwapDirection,
 ): {
   baseReserveAfter: BigNumber;
   quoteReserveAfter: BigNumber;
@@ -423,21 +425,18 @@ export function getReservesAfterSwap(
   const baseReserve: BigNumber = new BigNumber(poolState.baseReserve.toString());
   const quoteReserve: BigNumber = new BigNumber(poolState.quoteReserve.toString());
 
-  switch (swapDirection) {
-    case SWAP_DIRECTION.SellBase:
-      return {
-        baseReserveAfter: baseReserve.plus(amountAddedIn),
-        quoteReserveAfter: quoteReserve.minus(amountSubstractedOut),
-      };
-
-    case SWAP_DIRECTION.SellQuote:
-      return {
-        baseReserveAfter: baseReserve.minus(amountSubstractedOut),
-        quoteReserveAfter: quoteReserve.plus(amountAddedIn),
-      };
-
-    default:
-      throw Error("Invalid swapDirection: " + swapDirection);
+  if (swapDirection.sellBase) {
+    return {
+      baseReserveAfter: baseReserve.plus(amountAddedIn),
+      quoteReserveAfter: quoteReserve.minus(amountSubstractedOut),
+    };
+  } else if (swapDirection.sellQuote) {
+    return {
+      baseReserveAfter: baseReserve.minus(amountSubstractedOut),
+      quoteReserveAfter: quoteReserve.plus(amountAddedIn),
+    };
+  } else {
+    throw Error("Invalid swapDirection: " + swapDirection);
   }
 }
 

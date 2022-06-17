@@ -16,6 +16,8 @@ export interface PoolState {
   marketPriceLastUpdateSlot: anchor.BN;
   lowPrice: anchor.BN;
   highPrice: anchor.BN;
+  virtualBaseReserve: anchor.BN;
+  virtualQuoteReserve: anchor.BN;
   reservedU64: Array<any>;
 }
 
@@ -66,6 +68,9 @@ export interface SwapConfig {
   slope: anchor.BN;
   disableStablePriceDiffCheck: boolean;
   disableQuoteTokenPriceCheck: boolean;
+  rebateNumerator: number;
+  rebateDenominator: number;
+  maxVirtualReserveRatio: number;
   reservedU8: Array<any>;
   reservedU64: Array<any>;
 }

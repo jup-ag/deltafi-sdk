@@ -34,13 +34,21 @@ export async function getSymbolToPythPriceData(
   return symbolToPythPriceData;
 }
 
-export function getMarketPriceTuple(
+export function getPythMarketPriceTuple(
   symbolToPythPriceData: SymbolToPythPriceData,
   baseSymbol: string,
   quoteSymbol: string,
 ): MarketPriceTuple {
   const basePythPriceData = symbolToPythPriceData[baseSymbol];
   const quotePythPriceData = symbolToPythPriceData[quoteSymbol];
+
+  if (!basePythPriceData || !quotePythPriceData) {
+    return {
+      marketPrice: new BigNumber(NaN),
+      lowPrice: new BigNumber(NaN),
+      highPrice: new BigNumber(NaN),
+    };
+  }
 
   const marketPrice = new BigNumber(basePythPriceData.price).dividedBy(
     new BigNumber(quotePythPriceData.price),

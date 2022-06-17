@@ -141,7 +141,7 @@ const doSwap = async (keypairFilePath: string, network: string) => {
       new BN(exponentiate(new BigNumber("1"), usdtTokenConfig.decimals).toFixed(0)),
       new BN(
         exponentiate(
-          new BigNumber(swapoutResult.amountOutWithSlippage),
+          new BigNumber(swapoutResult2.amountOutWithSlippage),
           usdcTokenConfig.decimals,
         ).toFixed(0),
       ),
