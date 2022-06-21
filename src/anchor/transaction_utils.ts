@@ -1,5 +1,5 @@
 import { token } from "@project-serum/anchor/dist/cjs/utils";
-import { Token, TOKEN_PROGRAM_ID, u64 } from "@solana/spl-token";
+import { AccountLayout, NATIVE_MINT, Token, TOKEN_PROGRAM_ID, u64 } from "@solana/spl-token";
 import {
   Keypair,
   PublicKey,
@@ -29,6 +29,54 @@ export async function getDeltafiUser(program, marketConfig, walletPubkey) {
   return program.account.deltafiUser.fetchNullable(deltafiUserPubkey);
 }
 
+export function createWrapSOLTransactions(
+  wrapAccountPubkey: PublicKey,
+  lamports: number,
+  walletPubkey: PublicKey,
+): {
+  createWrappedTokenAccountTransaction: Transaction;
+  initializeWrappedTokenAccountTransaction: Transaction;
+  closeWrappedTokenAccountTransaction: Transaction;
+} {
+  const createWrappedTokenAccountTransaction = new Transaction();
+  createWrappedTokenAccountTransaction.add(
+    SystemProgram.createAccount({
+      fromPubkey: walletPubkey,
+      newAccountPubkey: wrapAccountPubkey,
+      lamports,
+      space: AccountLayout.span,
+      programId: TOKEN_PROGRAM_ID,
+    }),
+  );
+
+  const initializeWrappedTokenAccountTransaction = new Transaction();
+  initializeWrappedTokenAccountTransaction.add(
+    Token.createInitAccountInstruction(
+      TOKEN_PROGRAM_ID,
+      NATIVE_MINT,
+      wrapAccountPubkey,
+      walletPubkey,
+    ),
+  );
+
+  const closeWrappedTokenAccountTransaction = new Transaction();
+  closeWrappedTokenAccountTransaction.add(
+    Token.createCloseAccountInstruction(
+      TOKEN_PROGRAM_ID,
+      wrapAccountPubkey,
+      walletPubkey,
+      walletPubkey,
+      [],
+    ),
+  );
+
+  return {
+    createWrappedTokenAccountTransaction,
+    initializeWrappedTokenAccountTransaction,
+    closeWrappedTokenAccountTransaction,
+  };
+}
+
 export async function createSwapTransaction(
   poolConfig: any,
   program: any,
@@ -44,12 +92,44 @@ export async function createSwapTransaction(
   const poolPubkey = new PublicKey(poolConfig.swapInfo);
   const marketConfig = swapInfo.configKey;
 
+  const buySol =
+    (poolConfig.quote === "SOL" && swapDirection.sellBase) ||
+    (poolConfig.base === "SOL" && swapDirection.sellQuote);
+  const sellSol =
+    (poolConfig.quote === "SOL" && swapDirection.sellQuote) ||
+    (poolConfig.base === "SOL" && swapDirection.sellBase);
+
+  let userSourceTokenRef = inputTokenPubkey;
+  let userDestinationTokenRef = outputTokenPubkey;
+
+  const wrappedSolRefKeyPair = Keypair.generate();
+  const createTokenAccountCost =
+    await program.provider.connection.getMinimumBalanceForRentExemption(AccountLayout.span);
+  let nativeSOLHandlingTransactions = null;
+  if (buySol || sellSol) {
+    const wrappedSOLLamport = buySol
+      ? createTokenAccountCost
+      : inputAmount.toNumber() + createTokenAccountCost;
+
+    nativeSOLHandlingTransactions = createWrapSOLTransactions(
+      wrappedSolRefKeyPair.publicKey,
+      wrappedSOLLamport,
+      walletPubkey,
+    );
+
+    if (buySol) {
+      userDestinationTokenRef = wrappedSolRefKeyPair.publicKey;
+    } else {
+      userSourceTokenRef = wrappedSolRefKeyPair.publicKey;
+    }
+  }
+
   const userTransferAuthority = Keypair.generate();
   const transactionApprove: Transaction = new Transaction();
   transactionApprove.add(
     Token.createApproveInstruction(
       TOKEN_PROGRAM_ID,
-      inputTokenPubkey,
+      userSourceTokenRef,
       userTransferAuthority.publicKey,
       walletPubkey,
       [],
@@ -97,8 +177,8 @@ export async function createSwapTransaction(
   const swapAccounts = {
     marketConfig: marketConfig,
     swapInfo: poolPubkey,
-    userSourceToken: inputTokenPubkey,
-    userDestinationToken: outputTokenPubkey,
+    userSourceToken: userSourceTokenRef,
+    userDestinationToken: userDestinationTokenRef,
     swapSourceToken,
     swapDestinationToken,
     deltafiUser: deltafiUserPubkey,
@@ -123,13 +203,27 @@ export async function createSwapTransaction(
     throw Error("Invalid swap type: " + swapInfo.swapType);
   })();
 
-  const transaction = mergeTransactions([
+  let transaction = mergeTransactions([
     transactionApprove,
     transactionCreateDeltafiUser,
     transactionSwap,
   ]);
 
   const signers = [userTransferAuthority];
+  if (buySol || sellSol) {
+    const {
+      createWrappedTokenAccountTransaction,
+      initializeWrappedTokenAccountTransaction,
+      closeWrappedTokenAccountTransaction,
+    } = nativeSOLHandlingTransactions;
+    transaction = mergeTransactions([
+      createWrappedTokenAccountTransaction,
+      initializeWrappedTokenAccountTransaction,
+      transaction,
+      closeWrappedTokenAccountTransaction,
+    ]);
+    signers.push(wrappedSolRefKeyPair);
+  }
 
   return { transaction, signers };
 }
