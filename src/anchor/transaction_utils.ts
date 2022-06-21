@@ -244,6 +244,30 @@ export async function createDepositTransaction(
   let baseSourceRef = userTokenBase;
   let quoteSourceRef = userTokenQuote;
 
+  const baseSOL = poolConfig.base === "SOL";
+  const quoteSOL = poolConfig.quote === "SOL";
+  const wrappedSolRefKeyPair = Keypair.generate();
+  let nativeSOLHandlingTransactions = null;
+  if (baseSOL || quoteSOL) {
+    const rentLamports = await program.provider.connection.getMinimumBalanceForRentExemption(
+      AccountLayout.span,
+    );
+    const wrappedSOLLamport =
+      (baseSOL ? baseAmount.toNumber() : quoteAmount.toNumber()) + rentLamports;
+
+    nativeSOLHandlingTransactions = createWrapSOLTransactions(
+      wrappedSolRefKeyPair.publicKey,
+      wrappedSOLLamport,
+      walletPubkey,
+    );
+
+    if (baseSOL) {
+      baseSourceRef = wrappedSolRefKeyPair.publicKey;
+    } else {
+      quoteSourceRef = wrappedSolRefKeyPair.publicKey;
+    }
+  }
+
   const [lpPublicKey, lpBump] = await PublicKey.findProgramAddress(
     [
       Buffer.from("LiquidityProvider"),
@@ -333,6 +357,21 @@ export async function createDepositTransaction(
   }
 
   const signers = [userTransferAuthority];
+  if (baseSOL || quoteSOL) {
+    const {
+      createWrappedTokenAccountTransaction,
+      initializeWrappedTokenAccountTransaction,
+      closeWrappedTokenAccountTransaction,
+    } = nativeSOLHandlingTransactions;
+    transaction = mergeTransactions([
+      createWrappedTokenAccountTransaction,
+      initializeWrappedTokenAccountTransaction,
+      transaction,
+      closeWrappedTokenAccountTransaction,
+    ]);
+    signers.push(wrappedSolRefKeyPair);
+  }
+
   return { transaction, signers };
 }
 
@@ -350,6 +389,29 @@ export async function createWithdrawTransaction(
 ) {
   let baseSourceRef = userTokenBase;
   let quoteSourceRef = userTokenQuote;
+
+  const baseSOL = poolConfig.base === "SOL";
+  const quoteSOL = poolConfig.quote === "SOL";
+  const wrappedSolRefKeyPair = Keypair.generate();
+  let nativeSOLHandlingTransactions = null;
+  if (baseSOL || quoteSOL) {
+    const rentLamports = await program.provider.connection.getMinimumBalanceForRentExemption(
+      AccountLayout.span,
+    );
+    const wrappedSOLLamport = rentLamports;
+
+    nativeSOLHandlingTransactions = createWrapSOLTransactions(
+      wrappedSolRefKeyPair.publicKey,
+      wrappedSOLLamport,
+      walletPubkey,
+    );
+
+    if (baseSOL) {
+      baseSourceRef = wrappedSolRefKeyPair.publicKey;
+    } else {
+      quoteSourceRef = wrappedSolRefKeyPair.publicKey;
+    }
+  }
 
   const [lpPublicKey] = await PublicKey.findProgramAddress(
     [
@@ -403,6 +465,20 @@ export async function createWithdrawTransaction(
   }
 
   const signers = [];
+  if (baseSOL || quoteSOL) {
+    const {
+      createWrappedTokenAccountTransaction,
+      initializeWrappedTokenAccountTransaction,
+      closeWrappedTokenAccountTransaction,
+    } = nativeSOLHandlingTransactions;
+    transaction = mergeTransactions([
+      createWrappedTokenAccountTransaction,
+      initializeWrappedTokenAccountTransaction,
+      transaction,
+      closeWrappedTokenAccountTransaction,
+    ]);
+    signers.push(wrappedSolRefKeyPair);
+  }
 
   return { transaction, signers };
 }
