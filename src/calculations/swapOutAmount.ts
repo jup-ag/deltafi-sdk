@@ -1,11 +1,12 @@
 import BigNumber from "bignumber.js";
 import { calculateOutAmountNormalSwap, calculateOutAmountStableSwap } from "./calculation";
 import { PoolState, SwapConfig, SwapInfo, SwapDirection } from "../anchor/type_definitions";
-import { WAD, bnToString, exponentiate, exponentiatedBy } from "./utils";
+import { WAD, exponentiate, exponentiatedBy, getOppsiteSwapDirection } from "./utils";
+import { bnToString } from "./tokenUtils";
 import { TokenConfig } from "./types";
 import { getPythMarketPriceTuple, SymbolToPythPriceData } from "../anchor/pyth_utils";
 
-export type SwapOutResult = {
+export type SwapResult = {
   amountIn: string;
   amountOut: string;
   amountOutWithSlippage: string;
@@ -32,7 +33,7 @@ export async function getSwapOutResult(
   toToken: TokenConfig,
   amountIn: string,
   maxSlippage: number,
-): Promise<SwapOutResult> {
+): Promise<SwapResult> {
   const { baseToken, quoteToken } =
     fromToken.mint === swapInfo.mintBase.toBase58()
       ? { baseToken: fromToken, quoteToken: toToken }
@@ -54,6 +55,24 @@ export async function getSwapOutResult(
     marketPriceTuple.highPrice,
   );
 }
+
+export const emptyResult: SwapResult = {
+  amountIn: "",
+  amountOut: "",
+  amountOutWithSlippage: "",
+  fee: "",
+  priceImpact: "",
+  insufficientLiquidity: false,
+};
+
+export const zeroResult: SwapResult = {
+  amountIn: "0",
+  amountOut: "0",
+  amountOutWithSlippage: "0",
+  fee: "0",
+  priceImpact: "0",
+  insufficientLiquidity: false,
+};
 
 /**
  * Main interface function of this module, calculate the output information
@@ -78,18 +97,15 @@ export function calculateSwapOutResult(
   marketPrice: BigNumber,
   marketPriceLow?: BigNumber,
   marketPriceHigh?: BigNumber,
-): SwapOutResult {
+): SwapResult {
   const amountInBN: BigNumber = new BigNumber(amountIn);
   if (amountInBN.isNaN()) {
-    return {
-      amountIn,
-      amountOut: "",
-      amountOutWithSlippage: "",
-      fee: "",
-      priceImpact: "",
-      insufficientLiquidity: false,
-    };
+    return emptyResult;
   }
+  if (amountInBN.isEqualTo(0)) {
+    return zeroResult;
+  }
+
   if (parseFloat(amountIn) < 0) {
     throw Error(`invalid amount input: ${amountIn}`);
   }
@@ -123,6 +139,93 @@ export function calculateSwapOutResult(
 
   const fee: string = grossAmountOutBN.minus(new BigNumber(amountOut)).toString();
   const adminFeeBN: BigNumber = new BigNumber(fee)
+    .multipliedBy(swapInfo.swapConfig.adminTradeFeeNumerator.toString())
+    .dividedBy(swapInfo.swapConfig.adminTradeFeeDenominator.toString());
+
+  const sufficientReserve = IsSufficientReserve(
+    swapDirection,
+    swapInfo,
+    exponentiate(amountInBN, fromToken.decimals),
+    exponentiate(grossAmountOutBN.minus(adminFeeBN), toToken.decimals),
+    marketPrice,
+  );
+
+  return {
+    amountIn,
+    amountOut,
+    amountOutWithSlippage,
+    fee,
+    priceImpact,
+    insufficientLiquidity: !sufficientReserve,
+  };
+}
+
+/**
+ * Main interface function of this module, calculate the input information
+ * of a swap with the swap output information
+ * @param swapInfo pool's information, includes pool state, pool's configs of fees and all tokens and token accounts info
+ * @param fromToken info of the input token
+ * @param toToken info of the output token
+ * @param amountOut amount of the output token to be traded
+ * @param maxSlippage max maxSlippage limit, in percentage
+ * @param marketPrice basePrice / quotePrice
+ * @param marketPriceHigh upper bound of the market price after confidence interval adjustion
+ * @param marketPriceLow lower bound of the market price after confidence interval adjustion
+ * @returns amount in information (+ amount out with max slippage)
+ */
+export function calculateSwapInResult(
+  swapInfo: SwapInfo,
+  fromToken: TokenConfig,
+  toToken: TokenConfig,
+  amountOut: string,
+  maxSlippage: number,
+  marketPrice: BigNumber,
+  marketPriceLow?: BigNumber,
+  marketPriceHigh?: BigNumber,
+): SwapResult {
+  const amountOutBN: BigNumber = new BigNumber(amountOut);
+  if (amountOutBN.isNaN()) {
+    return emptyResult;
+  }
+  if (amountOutBN.isEqualTo(0)) {
+    return zeroResult;
+  }
+
+  if (amountOutBN.toNumber() < 0) {
+    throw Error(`invalid amount input: ${amountOut}`);
+  }
+
+  const swapDirection: SwapDirection = getSwapDirection(fromToken, toToken, swapInfo);
+
+  const grossAmountOutBN: BigNumber = amountOutBN
+    .multipliedBy(swapInfo.swapConfig.tradeFeeDenominator.toString())
+    .dividedBy(
+      (swapInfo.swapConfig.tradeFeeDenominator - swapInfo.swapConfig.tradeFeeNumerator).toString(),
+    );
+
+  const { amountOut: amountInNegBN, priceImpact: priceImpactBN } = getSwappedAmountsAndPriceImpact(
+    swapInfo,
+    getOppsiteSwapDirection(swapDirection), // need to use opposite swap direction
+    grossAmountOutBN.negated(),
+    marketPrice,
+    marketPriceHigh,
+    marketPriceLow,
+  );
+
+  const amountInBN: BigNumber = amountInNegBN.negated();
+
+  const priceImpact: string = priceImpactBN.toString();
+
+  const amountIn: string = parseFloat(bnToString(fromToken, amountInBN)).toString();
+  const amountOutWithSlippage: string = bnToString(
+    toToken,
+    amountOutBN.multipliedBy(new BigNumber(100).minus(new BigNumber(maxSlippage)).dividedBy(100)),
+  );
+
+  const feeBN: BigNumber = grossAmountOutBN.minus(amountOutBN);
+  const fee: string = bnToString(toToken, grossAmountOutBN.minus(amountOutBN));
+
+  const adminFeeBN: BigNumber = feeBN
     .multipliedBy(swapInfo.swapConfig.adminTradeFeeNumerator.toString())
     .dividedBy(swapInfo.swapConfig.adminTradeFeeDenominator.toString());
 
@@ -224,13 +327,14 @@ export function getSwapOutAmountSellBase(
   amountIn: BigNumber,
   marketPrice: BigNumber,
 ): { outAmount: BigNumber; priceImpact: BigNumber } {
+  const { virtualBaseReserve, virtualQuoteReserve } = getVirtualReserves(pool, marketPrice);
   if (pool.swapType.normalSwap) {
     return calculateOutAmountNormalSwap(
       marketPrice,
       new BigNumber(pool.poolState.targetBaseReserve.toString()),
       new BigNumber(pool.poolState.targetQuoteReserve.toString()),
-      new BigNumber(pool.poolState.baseReserve.toString()),
-      new BigNumber(pool.poolState.quoteReserve.toString()),
+      new BigNumber(pool.poolState.baseReserve.toString()).plus(virtualBaseReserve),
+      new BigNumber(pool.poolState.quoteReserve.toString()).plus(virtualQuoteReserve),
       amountIn,
     );
   } else if (pool.swapType.stableSwap) {
@@ -259,14 +363,15 @@ export function getSwapOutAmountSellQuote(
   amountIn: BigNumber,
   marketPrice: BigNumber,
 ): { outAmount: BigNumber; priceImpact: BigNumber } {
+  const { virtualBaseReserve, virtualQuoteReserve } = getVirtualReserves(pool, marketPrice);
   if (pool.swapType.normalSwap) {
     return calculateOutAmountNormalSwap(
       // the market price for calculation is the reciprocal of the market price input
       new BigNumber(1).dividedBy(marketPrice),
       new BigNumber(pool.poolState.targetQuoteReserve.toString()),
       new BigNumber(pool.poolState.targetBaseReserve.toString()),
-      new BigNumber(pool.poolState.quoteReserve.toString()),
-      new BigNumber(pool.poolState.baseReserve.toString()),
+      new BigNumber(pool.poolState.quoteReserve.toString()).plus(virtualQuoteReserve),
+      new BigNumber(pool.poolState.baseReserve.toString()).plus(virtualBaseReserve),
       amountIn,
     );
   } else if (pool.swapType.stableSwap) {
@@ -325,17 +430,6 @@ export function getSwapDirection(
   }
 
   throw Error("Invalid to/from token pair: " + fromToken.mint + " " + toToken.mint);
-}
-
-// get the opposite swap direction from the current swap direction
-export function getOppsiteSwapDirection(swapDirection: SwapDirection) {
-  if (swapDirection.sellBase) {
-    return { sellQuote: {} };
-  } else if (swapDirection.sellQuote) {
-    return { sellBase: {} };
-  } else {
-    throw Error("Invalid swapDirection: " + swapDirection);
-  }
 }
 
 // check if there is sufficient reserves after swap with the reserve limit
@@ -408,6 +502,31 @@ export function getNormalizedReserves(
   return {
     normalizedBaseReserve: coef.multipliedBy(targetBaseReserve),
     normalizedQuoteReserve: coef.multipliedBy(targetQuoteReserve),
+  };
+}
+
+export function getVirtualReserves(
+  swapInfo: SwapInfo,
+  marketPrice: BigNumber,
+): {
+  virtualBaseReserve: BigNumber;
+  virtualQuoteReserve: BigNumber;
+} {
+  const { normalizedBaseReserve, normalizedQuoteReserve } = getNormalizedReserves(
+    new BigNumber(swapInfo.poolState.baseReserve.toString()),
+    new BigNumber(swapInfo.poolState.quoteReserve.toString()),
+    new BigNumber(swapInfo.poolState.targetBaseReserve.toString()),
+    new BigNumber(swapInfo.poolState.targetQuoteReserve.toString()),
+    marketPrice,
+  );
+
+  const virtualReserveRatio = new BigNumber(swapInfo.swapConfig.virtualReservePercentage).dividedBy(
+    100,
+  );
+
+  return {
+    virtualBaseReserve: normalizedBaseReserve.multipliedBy(virtualReserveRatio),
+    virtualQuoteReserve: normalizedQuoteReserve.multipliedBy(virtualReserveRatio),
   };
 }
 

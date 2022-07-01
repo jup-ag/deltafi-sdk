@@ -12,12 +12,14 @@ export interface PoolState {
   totalTradedBase: anchor.BN;
   totalTradedQuote: anchor.BN;
   accumulatedTradeReward: anchor.BN;
-  lastRewardWindowStartTimestamp: anchor.BN;
+  lastUpdateTimestamp: anchor.BN;
   marketPriceLastUpdateSlot: anchor.BN;
   lowPrice: anchor.BN;
   highPrice: anchor.BN;
-  virtualBaseReserve: anchor.BN;
-  virtualQuoteReserve: anchor.BN;
+  currentDayTradedQuote: anchor.BN;
+  lastDayTradedQuote: anchor.BN;
+  currentWeekTradedQuote: anchor.BN;
+  lastWeekTradedQuote: anchor.BN;
   reservedU64: Array<any>;
 }
 
@@ -70,7 +72,7 @@ export interface SwapConfig {
   disableQuoteTokenPriceCheck: boolean;
   rebateNumerator: number;
   rebateDenominator: number;
-  maxVirtualReserveRatio: number;
+  virtualReservePercentage: number;
   reservedU8: Array<any>;
   reservedU64: Array<any>;
 }

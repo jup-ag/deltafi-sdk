@@ -304,8 +304,7 @@ export async function createDepositTransaction(
   const depositAccounts = {
     swapInfo: new PublicKey(poolConfig.swapInfo),
     userTokenBase: baseSourceRef,
-    userTokenQuote,
-    quoteSourceRef,
+    userTokenQuote: quoteSourceRef,
     liquidityProvider: lpPublicKey,
     tokenBase: swapInfo.tokenBase,
     tokenQuote: swapInfo.tokenQuote,
@@ -426,8 +425,7 @@ export async function createWithdrawTransaction(
   const withdrawAccounts = {
     swapInfo: new PublicKey(poolConfig.swapInfo),
     userTokenBase: baseSourceRef,
-    userTokenQuote,
-    quoteSourceRef,
+    userTokenQuote: quoteSourceRef,
     liquidityProvider: lpPublicKey,
     tokenBase: swapInfo.tokenBase,
     tokenQuote: swapInfo.tokenQuote,

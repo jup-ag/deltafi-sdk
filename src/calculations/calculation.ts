@@ -1,6 +1,11 @@
 import BigNumber from "bignumber.js";
+import { BN } from "@project-serum/anchor";
 import { BigNumberWithConfig, validate } from "./utils";
+import { anchorBnToBn, stringCutTokenDecimals } from "./tokenUtils";
 import { approximateOutAmount } from "./approximation";
+import { getNormalizedReserves } from "./swapOutAmount";
+import { SwapInfo, PoolState } from "../anchor/type_definitions";
+import { TokenConfig } from "./types";
 
 const FLOAT_ROUND_UP_ESPSILON: number = 0.00000000000000006;
 
@@ -91,7 +96,7 @@ export function calculateOutAmountNormalSwap(
   );
 
   const outputBAmount =
-    approximationResult === 0
+    approximationResult === null
       ? calculationResult
       : Math.max(approximationResult, calculationResult);
 
@@ -99,6 +104,10 @@ export function calculateOutAmountNormalSwap(
     outputBAmount <= impliedOutAmount,
     "final result for swap out amount should not be larger than the implied out amount",
   );
+
+  if (inputAAmount.isEqualTo(0)) {
+    return { outAmount: new BigNumber(outputBAmount), priceImpact: new BigNumber(0) };
+  }
 
   let impliedPrice: BigNumber = marketPrice
     .multipliedBy(currentReserveB)
@@ -265,4 +274,194 @@ export function calculateOutAmountStableSwap(
     outAmount: new BigNumber(outputBAmount.toFixed(0)),
     priceImpact,
   };
+}
+
+export function calculateWithdrawalFromShares(
+  baseShare: BN,
+  quoteShare: BN,
+  baseTokenConfig: TokenConfig,
+  quoteTokenConfig: TokenConfig,
+  basePrice: BigNumber,
+  quotePrice: BigNumber,
+  poolState: PoolState,
+): {
+  baseWithdrawalAmount: string;
+  quoteWithdrawalAmount: string;
+} {
+  let baseWithdrawalAmount: BigNumber;
+  let quoteWithdrawalAmount: BigNumber;
+
+  const baseTokenInfo: tokenShareInfo = {
+    price: basePrice,
+    share: anchorBnToBn(baseTokenConfig, baseShare),
+    shareSupply: anchorBnToBn(baseTokenConfig, poolState.baseSupply),
+    reserve: anchorBnToBn(baseTokenConfig, poolState.baseReserve),
+    targetReserve: anchorBnToBn(baseTokenConfig, poolState.targetBaseReserve),
+  };
+
+  const quoteTokenInfo: tokenShareInfo = {
+    price: quotePrice,
+    share: anchorBnToBn(quoteTokenConfig, quoteShare),
+    shareSupply: anchorBnToBn(quoteTokenConfig, poolState.quoteSupply),
+    reserve: anchorBnToBn(quoteTokenConfig, poolState.quoteReserve),
+    targetReserve: anchorBnToBn(quoteTokenConfig, poolState.targetQuoteReserve),
+  };
+
+  const baseReserveToTargetRatio: BigNumber = baseTokenInfo.reserve.dividedBy(
+    baseTokenInfo.targetReserve,
+  );
+  const quoteReserveToTargetRatio: BigNumber = quoteTokenInfo.reserve.dividedBy(
+    quoteTokenInfo.targetReserve,
+  );
+
+  if (baseReserveToTargetRatio.isLessThan(quoteReserveToTargetRatio)) {
+    const { lowTokenAmount, highTokenAmount } = calculateWithdrawFromSharesAndBalances(
+      baseTokenInfo,
+      quoteTokenInfo,
+    );
+    baseWithdrawalAmount = lowTokenAmount;
+    quoteWithdrawalAmount = highTokenAmount;
+  } else {
+    const { lowTokenAmount, highTokenAmount } = calculateWithdrawFromSharesAndBalances(
+      quoteTokenInfo,
+      baseTokenInfo,
+    );
+    baseWithdrawalAmount = highTokenAmount;
+    quoteWithdrawalAmount = lowTokenAmount;
+  }
+
+  return {
+    baseWithdrawalAmount: stringCutTokenDecimals(
+      baseTokenConfig,
+      baseWithdrawalAmount.toFixed(baseTokenConfig.decimals),
+    ),
+    quoteWithdrawalAmount: stringCutTokenDecimals(
+      quoteTokenConfig,
+      quoteWithdrawalAmount.toFixed(quoteTokenConfig.decimals),
+    ),
+  };
+}
+
+interface tokenShareInfo {
+  price: BigNumber;
+  share: BigNumber;
+  shareSupply: BigNumber;
+  reserve: BigNumber;
+  targetReserve: BigNumber;
+}
+
+export function calculateWithdrawFromSharesAndBalances(
+  lowTokenShareInfo: tokenShareInfo,
+  highTokenShareInfo: tokenShareInfo,
+): {
+  lowTokenAmount: BigNumber;
+  highTokenAmount: BigNumber;
+} {
+  const lowTokenAmount: BigNumber = lowTokenShareInfo.reserve
+    .multipliedBy(lowTokenShareInfo.share)
+    .dividedBy(lowTokenShareInfo.shareSupply);
+
+  const highTokenReserveBase: BigNumber = lowTokenShareInfo.reserve
+    .multipliedBy(highTokenShareInfo.targetReserve)
+    .dividedBy(lowTokenShareInfo.targetReserve);
+  const highTokenAmountBase: BigNumber = highTokenReserveBase
+    .multipliedBy(highTokenShareInfo.share)
+    .dividedBy(highTokenShareInfo.shareSupply);
+  const shareTvlRatio = lowTokenShareInfo.share
+    .multipliedBy(lowTokenShareInfo.price)
+    .plus(highTokenShareInfo.share.multipliedBy(highTokenShareInfo.price))
+    .dividedBy(
+      lowTokenShareInfo.shareSupply
+        .multipliedBy(lowTokenShareInfo.price)
+        .plus(highTokenShareInfo.shareSupply.multipliedBy(highTokenShareInfo.price)),
+    );
+
+  const highTokenAmountResidual: BigNumber = highTokenShareInfo.reserve
+    .minus(highTokenReserveBase)
+    .multipliedBy(shareTvlRatio);
+
+  return {
+    lowTokenAmount,
+    highTokenAmount: highTokenAmountBase.plus(highTokenAmountResidual),
+  };
+}
+
+// Calculate expected output from Deposit multiplied by minCoeff
+// Checks if its normalSwap or stableSwap and adjusts initial splitByRatio accordingly
+export function calculateMinOutAmountDeposit(
+  swapInfo: SwapInfo,
+  baseAmount: BigNumber,
+  quoteAmount: BigNumber,
+  marketPrice: BigNumber,
+  minCoeff: BigNumber,
+): {
+  minBaseShare: BigNumber;
+  minQuoteShare: BigNumber;
+} {
+  const poolState: PoolState = swapInfo.poolState;
+  const denominator: BigNumber = swapInfo.swapType.normalSwap ? marketPrice : new BigNumber(1);
+
+  const { base, quote } = splitByRatio(baseAmount, quoteAmount, new BigNumber(1), denominator);
+
+  const { normalizedBaseReserve, normalizedQuoteReserve } = getNormalizedReserves(
+    new BigNumber(poolState.baseReserve.toString()),
+    new BigNumber(poolState.quoteReserve.toString()),
+    new BigNumber(poolState.targetBaseReserve.toString()),
+    new BigNumber(poolState.targetQuoteReserve.toString()),
+    marketPrice,
+  );
+
+  // share = supply * deposit_amount / normalized_reserve
+  let minBaseShare = new BigNumber(poolState.baseSupply.toString())
+    .multipliedBy(base)
+    .dividedBy(normalizedBaseReserve)
+    .integerValue();
+
+  // share = supply * deposit_amount / normalized_reserve
+  let minQuoteShare = new BigNumber(poolState.quoteSupply.toString())
+    .multipliedBy(quote)
+    .dividedBy(normalizedQuoteReserve)
+    .integerValue();
+
+  return {
+    minBaseShare: minBaseShare.multipliedBy(minCoeff),
+    minQuoteShare: minQuoteShare.multipliedBy(minCoeff),
+  };
+}
+
+// Split (base, quote) into (base_main, quote_main, base_residual, quote_residual)
+// - base_main/quote_main = numerator/denominator
+// - base_main + base_residual = base
+// - quote_main + quote_residual = quote
+// - base_residual = 0 or quote_residual = 0
+export function splitByRatio(
+  base: BigNumber,
+  quote: BigNumber,
+  numerator: BigNumber,
+  denominator: BigNumber,
+): {
+  base: BigNumber;
+  quote: BigNumber;
+  baseResidual: BigNumber;
+  quoteResidual: BigNumber;
+} {
+  if (base.multipliedBy(denominator).isGreaterThan(quote.multipliedBy(numerator))) {
+    const baseMain: BigNumber = quote.multipliedBy(numerator).dividedBy(denominator).integerValue();
+    const baseResidual: BigNumber = base.minus(baseMain);
+    return {
+      base: baseMain,
+      quote,
+      baseResidual,
+      quoteResidual: new BigNumber(0),
+    };
+  } else {
+    const quoteMain: BigNumber = base.multipliedBy(denominator).dividedBy(numerator).integerValue();
+    const quoteResidual: BigNumber = quote.minus(quoteMain);
+    return {
+      base,
+      quote: quoteMain,
+      baseResidual: new BigNumber(0),
+      quoteResidual,
+    };
+  }
 }

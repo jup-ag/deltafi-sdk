@@ -1,5 +1,6 @@
 import { PublicKey } from "@solana/web3.js";
 import BigNumber from "bignumber.js";
+import { SwapDirection } from "../anchor/type_definitions";
 import { TokenConfig } from "./types";
 
 export const WAD_LENGTH = 18;
@@ -17,10 +18,6 @@ export function validate(expression: boolean, errMsg: string) {
   if (expression === false) {
     throw Error(errMsg);
   }
-}
-
-export function bnToString(tokenConfig: TokenConfig, amount: BigNumber): string {
-  return amount.toFixed(tokenConfig.decimals);
 }
 
 const ClonedBignumber = BigNumber.clone({
@@ -64,4 +61,15 @@ export function getPriceImpactDisplay(priceImpactBN: BigNumber): string {
     return "<0.1%";
   }
   return priceImpactBN.multipliedBy(100).toFixed(1) + "%";
+}
+
+// get the opposite swap direction from the current swap direction
+export function getOppsiteSwapDirection(swapDirection: SwapDirection): SwapDirection {
+  if (swapDirection.sellBase) {
+    return { sellQuote: {} };
+  } else if (swapDirection.sellQuote) {
+    return { sellBase: {} };
+  } else {
+    throw Error("Invalid swapDirection: " + swapDirection);
+  }
 }

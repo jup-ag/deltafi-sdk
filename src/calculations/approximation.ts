@@ -52,7 +52,7 @@ export function approximateOutAmount(
   ) {
     return {
       impliedOutAmount: Math.floor(impliedOutAmountBigNumber.toNumber()),
-      approximationResult: 0,
+      approximationResult: null,
     };
   }
 
@@ -65,10 +65,11 @@ export function approximateOutAmount(
   // diffFromImpliedAmount = kMultiplier * kMultiplicand
   const diffFromImpliedAmount: BigNumber = kMultiplier.multipliedBy(kMultiplicand);
 
-  if (impliedOutAmountBigNumber.abs().isLessThanOrEqualTo(diffFromImpliedAmount)) {
+  // impliedOutAmountBigNumber - diffFromImpliedAmount should be >= 0
+  if (impliedOutAmountBigNumber.abs().isLessThan(diffFromImpliedAmount)) {
     return {
       impliedOutAmount: Math.floor(impliedOutAmountBigNumber.toNumber()),
-      approximationResult: 0,
+      approximationResult: null,
     };
   }
 

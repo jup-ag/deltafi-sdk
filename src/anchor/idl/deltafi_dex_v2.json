@@ -190,36 +190,6 @@
       ]
     },
     {
-      "name": "updateSwapVirtualReserve",
-      "accounts": [
-        {
-          "name": "marketConfig",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "swapInfo",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "admin",
-          "isMut": false,
-          "isSigner": true
-        }
-      ],
-      "args": [
-        {
-          "name": "virtualBaseReserve",
-          "type": "u64"
-        },
-        {
-          "name": "virtualQuoteReserve",
-          "type": "u64"
-        }
-      ]
-    },
-    {
       "name": "updateFarmConfig",
       "accounts": [
         {
@@ -474,47 +444,6 @@
         {
           "name": "quoteAmount",
           "type": "u64"
-        }
-      ]
-    },
-    {
-      "name": "createLiquidityProvider",
-      "accounts": [
-        {
-          "name": "marketConfig",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "swapInfo",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "liquidityProvider",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "owner",
-          "isMut": true,
-          "isSigner": true
-        },
-        {
-          "name": "systemProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "rent",
-          "isMut": false,
-          "isSigner": false
-        }
-      ],
-      "args": [
-        {
-          "name": "bump",
-          "type": "u8"
         }
       ]
     },
@@ -2065,47 +1994,6 @@
       "args": []
     },
     {
-      "name": "createFarmUser",
-      "accounts": [
-        {
-          "name": "marketConfig",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "farmInfo",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "farmUser",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "owner",
-          "isMut": true,
-          "isSigner": true
-        },
-        {
-          "name": "systemProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "rent",
-          "isMut": false,
-          "isSigner": false
-        }
-      ],
-      "args": [
-        {
-          "name": "bump",
-          "type": "u8"
-        }
-      ]
-    },
-    {
       "name": "createFarmUserV2",
       "accounts": [
         {
@@ -2552,7 +2440,7 @@
             "type": "u64"
           },
           {
-            "name": "lastRewardWindowStartTimestamp",
+            "name": "lastUpdateTimestamp",
             "type": "u64"
           },
           {
@@ -2568,11 +2456,19 @@
             "type": "u128"
           },
           {
-            "name": "virtualBaseReserve",
+            "name": "currentDayTradedQuote",
             "type": "u64"
           },
           {
-            "name": "virtualQuoteReserve",
+            "name": "lastDayTradedQuote",
+            "type": "u64"
+          },
+          {
+            "name": "currentWeekTradedQuote",
+            "type": "u64"
+          },
+          {
+            "name": "lastWeekTradedQuote",
             "type": "u64"
           },
           {
@@ -2580,7 +2476,7 @@
             "type": {
               "array": [
                 "u64",
-                14
+                12
               ]
             }
           }
@@ -2782,7 +2678,7 @@
             "type": "u32"
           },
           {
-            "name": "maxVirtualReserveRatio",
+            "name": "virtualReservePercentage",
             "type": "u16"
           },
           {

@@ -17,6 +17,8 @@ import {
 import { Command } from "commander";
 import * as https from "https";
 import { getSwapOutResult } from "../calculations/swapOutAmount";
+import { calculateMinOutAmountDeposit, calculateWithdrawalFromShares } from "../calculations/calculation";
+import { bnToAnchorBn, anchorBnToBn } from "../calculations/tokenUtils";
 import { getDeltafiDexV2, makeProvider } from "../anchor/anchor_utils";
 import { BN } from "@project-serum/anchor";
 import { getSymbolToPythPriceData } from "../anchor/pyth_utils";
@@ -235,6 +237,16 @@ const doDeposit = async (keypairFilePath: string, network: string, poolName: str
     `Depositing ${baseAmount.toString()} ${baseTokenConfig.symbol} and ` +
       `${quoteAmount.toString()} ${quoteTokenConfig.symbol}`,
   );
+
+  const minCoeff = new BigNumber(0.99);
+  const { minBaseShare, minQuoteShare } = calculateMinOutAmountDeposit(
+    swapInfo,
+    baseAmount,
+    quoteAmount,
+    new BigNumber(swapInfo.poolState.marketPrice.toString()),
+    minCoeff,
+  );
+
   try {
     const { transaction, signers } = await createDepositTransaction(
       poolConfig,
@@ -246,8 +258,8 @@ const doDeposit = async (keypairFilePath: string, network: string, poolName: str
       lpUser,
       new BN(exponentiate(baseAmount, baseTokenConfig.decimals).toFixed(0)),
       new BN(exponentiate(quoteAmount, quoteTokenConfig.decimals).toFixed(0)),
-      new BN(0),
-      new BN(0),
+      bnToAnchorBn(baseTokenConfig, minBaseShare),
+      bnToAnchorBn(quoteTokenConfig, minQuoteShare),
     );
 
     transaction.recentBlockhash = (await connection.getLatestBlockhash("max")).blockhash;
@@ -279,6 +291,11 @@ const doWithdraw = async (keypairFilePath: string, network: string, poolName: st
 
   const keyPair = readKeypair(keypairFilePath);
   const connection = new Connection(clusterApiUrl(deployConfig.network), "confirmed");
+
+  const symbolToPythPriceData = await getSymbolToPythPriceData(
+    connection,
+    deployConfig.tokenInfoList,
+  );
 
   const program = getDeltafiDexV2(
     new PublicKey(deployConfig.programId),
@@ -323,6 +340,20 @@ const doWithdraw = async (keypairFilePath: string, network: string, poolName: st
       `${quoteShare} ${quoteTokenConfig.symbol}`,
   );
 
+  const minCoeff = new BigNumber(0.99);
+  const { baseWithdrawalAmount, quoteWithdrawalAmount } = calculateWithdrawalFromShares(
+    baseShare,
+    quoteShare,
+    baseTokenConfig,
+    quoteTokenConfig,
+    symbolToPythPriceData[baseTokenConfig.symbol].price,
+    symbolToPythPriceData[quoteTokenConfig.symbol].price,
+    swapInfo?.poolState,
+  );
+
+  const minBaseAmount = minCoeff.multipliedBy(new BigNumber(baseWithdrawalAmount));
+  const minQuoteAmount = minCoeff.multipliedBy(new BigNumber(quoteWithdrawalAmount));
+
   try {
     const { transaction, signers } = await createWithdrawTransaction(
       poolConfig,
@@ -333,8 +364,8 @@ const doWithdraw = async (keypairFilePath: string, network: string, poolName: st
       keyPair.publicKey,
       new BN(baseShare),
       new BN(quoteShare),
-      new BN(0),
-      new BN(0),
+      bnToAnchorBn(baseTokenConfig, minBaseAmount),
+      bnToAnchorBn(quoteTokenConfig, minQuoteAmount),
     );
 
     transaction.recentBlockhash = (await connection.getLatestBlockhash("max")).blockhash;

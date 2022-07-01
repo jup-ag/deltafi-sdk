@@ -160,6 +160,13 @@
           "product": "11111111111111111111111111111111",
           "productName": "Mock.cUSDT/USD"
         }
+      },
+      {
+        "name": "DeltaFi Token",
+        "mint": "de1QJkP1qDCk5JYCCXCeq27bQQUdCaiv7xVKFrhPSzF",
+        "symbol": "DELFI",
+        "decimals": 6,
+        "logoURI": "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/de1QJkP1qDCk5JYCCXCeq27bQQUdCaiv7xVKFrhPSzF/logo.png"
       }
     ]
   },
@@ -252,6 +259,20 @@
           {
             "name": "default",
             "farmInfo": "Fxycx73svyvVK1MFvbxhdY3EgXeuiU77iLQbfrd5wjg3"
+          }
+        ]
+      },
+      {
+        "name": "mSOL-USDC",
+        "base": "mSOL",
+        "quote": "USDC",
+        "mintBase": "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So",
+        "mintQuote": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "swapInfo": "6eyay9LAudYEUW4p6XNfb6pMhiabVuZ7KwRtxUhEY5FM",
+        "farmInfoList": [
+          {
+            "name": "default",
+            "farmInfo": "F2dzejqsdBpdNgZfuakiNyAQJuYNu49FSZZ46PUvBcge"
           }
         ]
       }
@@ -355,6 +376,13 @@
           "product": "11111111111111111111111111111111",
           "productName": "Mock.cUSDT/USD"
         }
+      },
+      {
+        "name": "DeltaFi Token",
+        "mint": "tstpB7nAg8n7ynm5C5mfRkQ73Q8dSTcyxkjNvR2Bspt",
+        "symbol": "DELFI",
+        "decimals": 6,
+        "logoURI": "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/de1QJkP1qDCk5JYCCXCeq27bQQUdCaiv7xVKFrhPSzF/logo.png"
       }
     ]
   },
@@ -457,6 +485,13 @@
           "product": "BQTamaGegNSZ1T5ssquCQkHQi2yB9xtkMZBFczoxwNi8",
           "productName": "Crypto.GMT/USD"
         }
+      },
+      {
+        "name": "DeltaFi Token",
+        "mint": "4iefnqUWWcn8nWTyXdyHqYkLwn1UPov18vCyP9T8Fy68",
+        "symbol": "DELFI",
+        "decimals": 6,
+        "logoURI": "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/de1QJkP1qDCk5JYCCXCeq27bQQUdCaiv7xVKFrhPSzF/logo.png"
       }
     ]
   }

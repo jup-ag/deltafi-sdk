@@ -193,24 +193,6 @@ export async function updateSwapConfig(program, marketConfig, swapInfo, swapConf
   });
 }
 
-export async function updateSwapVirtualReserve(
-  program,
-  marketConfig,
-  swapInfo,
-  virtualBaseReserve,
-  virtualQuoteReserve,
-  adminKeypair,
-) {
-  await program.rpc.updateSwapVirtualReserve(virtualBaseReserve, virtualQuoteReserve, {
-    accounts: {
-      marketConfig,
-      swapInfo,
-      admin: adminKeypair.publicKey,
-    },
-    signers: [adminKeypair],
-  });
-}
-
 export async function updateFarmConfig(program, marketConfig, farmInfo, farmConfig, adminKeypair) {
   await program.rpc.updateFarmConfig(farmConfig, {
     accounts: {
