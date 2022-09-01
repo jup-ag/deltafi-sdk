@@ -1,6 +1,6 @@
 {
   "name": "@jup-ag/deltafi-sdk",
-  "version": "0.0.1-test.2",
+  "version": "0.0.2",
   "description": "",
   "scripts": {
     "build": "tsup ./src/index.ts --format cjs,esm --dts",
