@@ -1,6 +1,6 @@
 {
   "name": "@jup-ag/deltafi-sdk",
-  "version": "0.0.1-test",
+  "version": "0.0.1-test.2",
   "description": "",
   "scripts": {
     "build": "tsup ./src/index.ts --format cjs,esm --dts",
@@ -30,7 +30,7 @@
     "@pythnetwork/client": "^2.5.1",
     "@solana/spl-token": "^0.1.8",
     "bigint-buffer": "^1.1.5",
-    "bignumber.js": "^9.0.1",
+    "bignumber.js": "^9.1.0",
     "bn.js": "^5.2.0"
   },
   "peerDependencies": {
