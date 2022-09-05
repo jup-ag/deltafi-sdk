@@ -247,6 +247,69 @@ export function calculateSwapInResult(
   };
 }
 
+export function getSwappedAmountsAndPriceImpactFromRawValue(
+  swapInfo: SwapInfo,
+  swapDirection: SwapDirection,
+  rawAmountIn: BigNumber,
+  marketPrice: BigNumber,
+  marketPriceSellBase?: BigNumber,
+  marketPriceSellQuote?: BigNumber,
+): {
+  amountIn: BigNumber;
+  amountOut: BigNumber;
+  priceImpact: BigNumber;
+} {
+  if (
+    !(marketPriceSellBase && marketPriceSellQuote) ||
+    swapInfo.swapConfig.enableConfidenceInterval === false
+  ) {
+    marketPriceSellBase = marketPrice;
+    marketPriceSellQuote = marketPrice;
+  }
+
+  if (swapDirection.sellBase) {
+    const normalizedMaketPrice = normalizeMarketPriceWithDecimals(
+      marketPriceSellBase,
+      swapInfo.mintBaseDecimals,
+      swapInfo.mintQuoteDecimals,
+    );
+
+    const { outAmount: rawAmountOut, priceImpact } = getSwapOutAmountSellBase(
+      swapInfo,
+      rawAmountIn,
+      normalizedMaketPrice,
+    );
+
+    return {
+      amountIn: rawAmountIn,
+      amountOut: rawAmountOut,
+      priceImpact,
+    };
+  } else if (swapDirection.sellQuote) {
+    const normalizedMaketPrice = normalizeMarketPriceWithDecimals(
+      marketPriceSellQuote,
+      swapInfo.mintBaseDecimals,
+      swapInfo.mintQuoteDecimals,
+    );
+
+    const { outAmount: rawAmountOut, priceImpact } = getSwapOutAmountSellQuote(
+      swapInfo,
+      rawAmountIn,
+      normalizedMaketPrice,
+    );
+
+    return {
+      amountIn: rawAmountIn,
+      amountOut: rawAmountOut,
+      priceImpact,
+    };
+  }
+
+  // if the above if - else-if condition is not satisfied
+  // the input from/to mint addresses do not match the pool's base and quote mint address
+  throw Error("Invalid swap direction: " + swapDirection);
+}
+
 export function getSwappedAmountsAndPriceImpact(
   swapInfo: SwapInfo,
   swapDirection: SwapDirection,

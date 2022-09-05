@@ -17,7 +17,10 @@ import {
 import { Command } from "commander";
 import * as https from "https";
 import { getSwapOutResult } from "../calculations/swapOutAmount";
-import { calculateMinOutAmountDeposit, calculateWithdrawalFromShares } from "../calculations/calculation";
+import {
+  calculateMinOutAmountDeposit,
+  calculateWithdrawalFromShares,
+} from "../calculations/calculation";
 import { bnToAnchorBn, anchorBnToBn } from "../calculations/tokenUtils";
 import { getDeltafiDexV2, makeProvider } from "../anchor/anchor_utils";
 import { BN } from "@project-serum/anchor";

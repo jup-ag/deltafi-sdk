@@ -1,8 +1,8 @@
 import { DeltafiDexV2 } from "./types/deltafi_dex_v2";
-import deltafiDexV2Idl from "./idl/deltafi_dex_v2.json";
+import { IDL } from "./idl/deltafi_dex_v2";
 import { Keypair, PublicKey } from "@solana/web3.js";
 import { Program, AnchorProvider, web3 } from "@project-serum/anchor";
-import * as token from "@solana/spl-token";
+import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { SwapConfig, SwapType } from "./type_definitions";
 
 const serumProgramId = new web3.PublicKey("9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin");
@@ -22,8 +22,8 @@ export function getDeltafiDexV2(
   programId: PublicKey,
   provider: AnchorProvider = null,
 ): Program<DeltafiDexV2> {
-  const idl = JSON.parse(JSON.stringify(deltafiDexV2Idl));
-  return new Program(idl, programId, provider != null ? provider : AnchorProvider.local());
+  // @ts-expect-error idl typing warning but actually works
+  return new Program(IDL, programId, provider != null ? provider : AnchorProvider.local());
 }
 
 export async function createMarketConfig(program, pythProgramId, deltafiMint, adminKeypair) {
@@ -46,7 +46,7 @@ export async function createMarketConfig(program, pythProgramId, deltafiMint, ad
       payer: program.provider.wallet.publicKey,
       systemProgram: web3.SystemProgram.programId,
       rent: web3.SYSVAR_RENT_PUBKEY,
-      tokenProgram: token.TOKEN_PROGRAM_ID,
+      tokenProgram: TOKEN_PROGRAM_ID,
     },
     signers: [seedKeyPair, adminKeypair, deltafiTokenKeyPair],
   });
@@ -89,7 +89,7 @@ export async function createSwap(
       payer: program.provider.wallet.publicKey,
       systemProgram: web3.SystemProgram.programId,
       rent: web3.SYSVAR_RENT_PUBKEY,
-      tokenProgram: token.TOKEN_PROGRAM_ID,
+      tokenProgram: TOKEN_PROGRAM_ID,
     },
     signers: [adminKeypair, seedKeypair, tokenBaseKeypair, tokenQuoteKeypair],
   });
@@ -128,7 +128,7 @@ export async function initSwap(
     tokenQuote,
     userAuthority: program.provider.wallet.publicKey,
     admin: adminKeypair.publicKey,
-    tokenProgram: token.TOKEN_PROGRAM_ID,
+    tokenProgram: TOKEN_PROGRAM_ID,
   };
 
   if (swapType.normalSwap != null) {
